@@ -50,3 +50,6 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+template-app/.vscode/settings.json
+template-app/.vscode/launch.json
+template-app/debug.log
