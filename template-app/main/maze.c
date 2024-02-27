@@ -16,6 +16,18 @@
 #define ANSI_BACKGROUND_WHITE   "\x1b[47m"
 
 
+// Semaphore that triggers when it's time to scan
+extern SemaphoreHandle_t scan_semaphore;
+extern SemaphoreHandle_t pathfind_semaphore;
+
+// Task externals
+extern TaskHandle_t pathfind_task;
+extern TaskHandle_t scan_task;
+
+// The maze
+extern struct Maze full_maze;
+extern SemaphoreHandle_t maze_mutex;
+
 // Initialize the nodes
 void initalizeMaze(struct Node maze[10][10]) {
     for (int x = 0; x < 10; x++) {
@@ -107,10 +119,15 @@ void update_connection(struct Node maze[10][10], struct Node *node, int heading,
 }
 
 
+////////////////////////////////////////////////////////////
+///////////// PATHFINDING TASK FUNCTIONS ///////////////////
+////////////////////////////////////////////////////////////
+
+
 // Finds the distance of each node from the start and center of the maze
 void Pathfind(struct Node maze[10][10]) {
 
-    // TODO: add a mutex for the maze
+    // printf("Pathfinding\n");
     
     int start = esp_timer_get_time();
 
@@ -128,6 +145,8 @@ void Pathfind(struct Node maze[10][10]) {
     maze[5][5].dist_to_center = 0;
 
     maze[0][0].dist_to_start = 0;
+
+    // printf("Reset values\n");
 
     // Value tracks what distance we currently are from the center
     for (int value = 0; (maze[0][0].dist_to_center == -1) && (value < 100); value++) {
@@ -201,12 +220,14 @@ void Pathfind(struct Node maze[10][10]) {
     
     //do stuff
     int stop = esp_timer_get_time();
-    printf("took %d us\n", (stop - start)); 
+    // printf("took %d us\n", (stop - start)); 
 }
 
 
 // Set the next destination
 struct Node* NextNode(struct Node maze[10][10], struct Node *currentNode, bool goingToCenter) {
+    printf("Next node\n");
+    
     if (goingToCenter) { 
 
         struct Node *closestNode = currentNode;
@@ -305,8 +326,56 @@ struct Node* NextNode(struct Node maze[10][10], struct Node *currentNode, bool g
 }
 
 
+void PathfindTask(void * pvParameters) {
+    bool goingToCenter = true;
+    bool debug = true;
+
+    while (1) {
+        if (xSemaphoreTake(pathfind_semaphore, (TickType_t) 10)) {
+            if (xSemaphoreTake(maze_mutex, (TickType_t) portMAX_DELAY)) {
+
+                // Switch direction if necessary
+                if ((full_maze.currentNode->x == 4 || full_maze.currentNode->x == 5) &&
+                    (full_maze.currentNode->y == 4 || full_maze.currentNode->y == 5)) {
+
+                    goingToCenter = false;
+                }
+                else if (full_maze.currentNode->x == 0 && full_maze.currentNode->y == 0) {
+                    goingToCenter = true;
+                }
+
+                // Find the next location to move to
+                Pathfind(full_maze.maze);
+                full_maze.nextNode = NextNode(full_maze.maze, full_maze.currentNode, goingToCenter);
+                xSemaphoreGive(maze_mutex);
+            }
+        }
+        
+    }
+}
+
+
 // Display the maze
-void printMaze(struct Node maze[10][10], struct Node *currentNode) {
+void printMaze() {
+
+    printf("Heading: ");
+    switch (full_maze.heading) {
+        case North:
+            printf("North\n");
+            break;
+        case East:
+            printf("East\n");
+            break;
+        case South:
+            printf("South\n");
+            break;
+        case West:
+            printf("West\n");
+            break;
+        default:
+            break;
+    }
+
     printf(" _ _ _ _ _ _ _ _ _ _\n");
     for (int y = 0; y < 10; y++) {
         
@@ -314,10 +383,10 @@ void printMaze(struct Node maze[10][10], struct Node *currentNode) {
             for (int x = 0; x < 10; x++) {
 
                 // If this space is where the robot is, highlight it blue
-                if (x == currentNode->x && y == currentNode->y) {
+                if (x == full_maze.currentNode->x && y == full_maze.currentNode->y) {
                     printf(ANSI_BACKGROUND_BLUE);
                 }
-                if (maze[x][y].connection[South]) {
+                if (full_maze.maze[x][y].connection[South]) {
                     printf(" ");
                 }
                 else {
@@ -327,7 +396,7 @@ void printMaze(struct Node maze[10][10], struct Node *currentNode) {
                 // Reset background
                 printf(ANSI_RESET_ALL);
 
-                if (maze[x][y].connection[East]) { 
+                if (full_maze.maze[x][y].connection[East]) { 
                     printf(" ");
                 }
                 else {
@@ -372,6 +441,92 @@ void PrintDistanceToCenter(struct Node maze[10][10]) {
     }
 }
 
+
+////////////////////////////////////////////////////////////
+/////////////// SCANNING TASK FUNCTIONS ////////////////////
+////////////////////////////////////////////////////////////
+
+
+// void ScannerInit(SemaphoreHandle_t scan_handle) {
+//     scan_semaphore = scan_handle;
+// }
+
+
+// Scans the environment and updates the maze accordingly
+void Scan() {
+    
+    // Wall length in cm
+    float WALL_LENGTH = 25.4;
+    // Furthest distance we can trust to be accurate
+    float MAX_DISTANCE = 100;
+
+
+    // Placeholders for the ultrasonic readings
+    float frontDistance = MAX_DISTANCE;
+    float leftDistance = MAX_DISTANCE;
+    float rightDistance = MAX_DISTANCE;
+
+    int closestFront = 0;
+    int closestLeft = 0;
+    int closestRight = 0;
+
+    printf("Scanning\n");
+
+    // Stop the motors
+    // TODO: this
+
+
+    // Wait for a bit
+    // TODO: this
+
+
+    // Front
+    if (frontDistance < MAX_DISTANCE) {
+        closestFront = (int)(frontDistance / WALL_LENGTH);
+        struct Node *updatedNode = full_maze.currentNode;
+
+        // update_connection(maze, currentNode, currentHeading, false);
+        switch (full_maze.heading) {
+        case North:
+            updatedNode = &full_maze.maze[full_maze.currentNode->x][full_maze.currentNode->y-closestFront];
+            break;
+
+        case East:
+            updatedNode = &full_maze.maze[full_maze.currentNode->x + closestFront][full_maze.currentNode->y];
+            break;
+        
+        case South:
+            updatedNode = &full_maze.maze[full_maze.currentNode->x][full_maze.currentNode->y+closestFront];
+            break;
+
+        case West:
+            updatedNode = &full_maze.maze[full_maze.currentNode->x - closestFront][full_maze.currentNode->y];
+            break;
+
+        }
+
+        update_connection(full_maze.maze, updatedNode, full_maze.heading, false);
+        
+    }
+
+
+}
+
+
+// Scanning task
+void ScanTask(void * pvParameters)
+{
+  for( ;; )
+  {
+    if (xSemaphoreTake(scan_semaphore, ( TickType_t ) 10) == pdTRUE ) {
+        if (xSemaphoreTake(maze_mutex, ( TickType_t ) portMAX_DELAY) == pdTRUE) {
+            Scan();
+            xSemaphoreGive(maze_mutex);
+            xSemaphoreGive(pathfind_semaphore);
+        }
+    }
+  }
+}
 
 // static long get_nanos(void) {
 //     struct timespec ts;

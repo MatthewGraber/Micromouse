@@ -3,10 +3,14 @@
 #include <time.h>
 
 #include "maze.h"
+#include "robot.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_timer.h"
+#include "freertos/queue.h"
+
+#define STACK_SIZE 1028*8
 
 
 struct Node maze[10][10];
@@ -119,25 +123,80 @@ void maze4() {
     update_connection(maze, &(maze[5][6]), East, false);
 }
 
+
+// Semaphore that triggers when it's time to scan
+SemaphoreHandle_t scan_semaphore;
+SemaphoreHandle_t pathfind_semaphore;
+
+// The maze
+struct Maze full_maze;
+SemaphoreHandle_t maze_mutex;
+
+void SillyOldWay();
+
 void app_main(void)
 {
+    // Initalize semaphores
+    scan_semaphore = xSemaphoreCreateBinary();
+    pathfind_semaphore = xSemaphoreCreateBinary();
+    maze_mutex = xSemaphoreCreateMutex();
+
     //time_t t;
     //void srand(unsigned int time(&t))
 
-    initalizeMaze(maze);
-    currentNode = &maze[0][0];
+    initalizeMaze(full_maze.maze);
+    full_maze.currentNode = &full_maze.maze[0][0];
 
-    maze1();
+    // maze1();
     // maze2();
-    // maze3();
+    maze3();
     // maze4();
 
-    printMaze(maze, currentNode);
+    printMaze();
 
     // Pathfind(maze);
     // PrintDistanceToCenter(maze);
 
+    static uint8_t uc_param_pathfind;
+    static uint8_t uc_param_scan;
+    static uint8_t uc_param_move;
 
+    TaskHandle_t pathfind_task = NULL;
+    TaskHandle_t scan_task = NULL;
+    TaskHandle_t move_task = NULL;
+    
+    xSemaphoreGive(scan_semaphore);
+
+    xTaskCreate( PathfindTask, "PATHFIND", STACK_SIZE, &uc_param_pathfind, 1, &pathfind_task );
+    configASSERT(pathfind_task);
+    
+    xTaskCreate( ScanTask, "SCAN", STACK_SIZE, &uc_param_scan, 1, &scan_task );
+    configASSERT(scan_task);
+
+    xTaskCreate( MoveTask, "MOVE", STACK_SIZE, &uc_param_move, tskIDLE_PRIORITY, &move_task );
+    configASSERT(move_task);
+
+
+    // if(pathfind_task != NULL)
+    // {
+    //     vTaskDelete(pathfind_task);
+    // }
+
+    // if(scan_task != NULL)
+    // {
+    //     vTaskDelete(scan_task);
+    // }
+
+    // if(move_task != NULL)
+    // {
+    //     vTaskDelete(move_task);
+    // }
+
+    //printf("hello world");
+}
+
+
+void SillyOldWay() {
     bool goingToCenter = true;
     // int present;
     // int past = esp_timer_get_time();
@@ -178,7 +237,4 @@ void app_main(void)
 
         }
     }
-    
-
-    //printf("hello world");
 }
