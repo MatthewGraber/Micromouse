@@ -121,6 +121,7 @@ void MoveTask(void * pvParameters) {
                 Move();
             }
             else {
+                // xSemaphoreGive(scan_semaphore);
                 xSemaphoreGive(maze_mutex);
                 xSemaphoreGive(pathfind_semaphore);
             }
