@@ -7,6 +7,7 @@
 
 #include "robot.h"
 #include "maze.h"
+#include "motor_control.h"
 
 
 extern SemaphoreHandle_t maze_mutex;
@@ -59,6 +60,10 @@ void Move() {
         }
 
         GoStraight();
+
+        brushed_motor_stop(MCPWM_UNIT_0, MCPWM_TIMER_0);
+        brushed_motor_stop(MCPWM_UNIT_0, MCPWM_TIMER_1);
+
         xSemaphoreGive(maze_mutex);
         xSemaphoreGive(scan_semaphore);
     }
@@ -67,7 +72,10 @@ void Move() {
 
 void TurnRight() {
     
-    // TODO: spin motors 
+    // TODO: spin motors
+    brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_0, 100); // motor 1 (left)
+    brushed_motor_stop(MCPWM_UNIT_0, MCPWM_TIMER_1); // motor 2 (right)
+
     printf("Turning right\n");
 
     vTaskDelay(100);
@@ -78,7 +86,10 @@ void TurnRight() {
 
 void TurnLeft() {
     
-    // TODO: spin motors 
+    // TODO: spin motors
+    brushed_motor_stop(MCPWM_UNIT_0, MCPWM_TIMER_0); // motor 1 (left)
+    brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_1, 100); // motor 2 (right)
+
     printf("Turning left\n");
 
     vTaskDelay(100);
@@ -89,6 +100,9 @@ void TurnLeft() {
 
 void GoStraight() {
     // TODO: spin motors
+    brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_0, 100); // motor 1 (left)
+    brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_1, 100); // motor 2 (right)
+
     printf("Moving straight\n");
 
     vTaskDelay(100);
@@ -98,6 +112,9 @@ void GoStraight() {
 
 
 void MoveTask(void * pvParameters) {
+
+    initialize_motor_control();
+
     while (1) {
         if (xSemaphoreTake(maze_mutex, (TickType_t) portMAX_DELAY)) {
             if (full_maze.nextNode != NULL) {
