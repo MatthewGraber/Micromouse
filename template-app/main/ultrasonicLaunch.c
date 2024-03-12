@@ -47,7 +47,7 @@ void ultrasonic_test(void *pvParameters)
             switch (res)
             {
                 case ESP_ERR_ULTRASONIC_PING:
-                    printf("Cannot ping (device is in invalid state)\n");
+                    // printf("Cannot ping (device is in invalid state)\n");
                     break;
                 case ESP_ERR_ULTRASONIC_PING_TIMEOUT:
                     printf("Ping timeout (no device found)\n");
@@ -82,7 +82,7 @@ void ultrasonic_test(void *pvParameters)
                     // printf("avDis = %0.04f cm\n", avDis*100);
                     printf("Distance: %0.04f cm\n", distance*100);
                     float distanceSend = distance*100;
-                    xQueueOverwrite(UsQueue,&distanceSend);
+                    xQueueSend(UsQueue, &distanceSend, 0);
                     //xQueueOverwriteFromISR(UsQueue, &distance, pdTRUE);
                 }
             }
@@ -96,6 +96,6 @@ void ultrasonic_test(void *pvParameters)
         //clock_t end = clock();
         //double time_spent =  (double)((end-begin)/_CLOCKS_PER_SEC_)*1000.0;
         //printf("Response Time: %f us\n",time_spent);
-        vTaskDelay(pdMS_TO_TICKS(500));
+        vTaskDelay(pdMS_TO_TICKS(50));
     }
 }

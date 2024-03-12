@@ -6,6 +6,7 @@
 #include "robot.h"
 #include <ultrasonic.h>
 #include "ultrasonicLaunch.h"
+#include "encoder.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -136,6 +137,25 @@ void maze4() {
 }
 
 
+void exampleRecieve()
+{
+    float distance1 = 0;
+    float distance2 = 0;
+
+    while (1)
+    {
+        if (xQueueReceive(distanceQueue1, &distance1, 0))
+        {
+            printf("Distance1: %f, Distance2:%f\n", distance1, distance2);
+        }
+        if (xQueueReceive(distanceQueue2, &distance2, 0))
+        {
+            printf("Distance1: %f, Distance2:%f\n", distance1, distance2);
+        }
+        vTaskDelay(1);
+    }
+}
+
 
 void SillyOldWay();
 
@@ -154,9 +174,13 @@ void app_main(void)
     initalizeMaze(full_maze.maze);
     full_maze.currentNode = &full_maze.maze[0][0];
 
+    // Initialize
+    initializeEncoder();
+
+
     // maze1();
     // maze2();
-    maze3();
+    // maze3();
     // maze4();
 
     printMaze();
@@ -175,13 +199,17 @@ void app_main(void)
     xSemaphoreGive(scan_semaphore);
 
     xTaskCreate( PathfindTask, "PATHFIND", STACK_SIZE, &uc_param_pathfind, 1, &pathfind_task );
-    configASSERT(pathfind_task);
+    // configASSERT(pathfind_task);
     
-    // xTaskCreate( ScanTask, "SCAN", STACK_SIZE, &uc_param_scan, 1, &scan_task );
+    xTaskCreate( ScanTask, "SCAN", STACK_SIZE, &uc_param_scan, 1, &scan_task );
     // configASSERT(scan_task);
 
-    xTaskCreate( MoveTask, "MOVE", STACK_SIZE, &uc_param_move, tskIDLE_PRIORITY, &move_task );
-    configASSERT(move_task);
+    // xTaskCreate( MoveTask, "MOVE", STACK_SIZE, &uc_param_move, tskIDLE_PRIORITY, &move_task );
+    // configASSERT(move_task);
+
+    // Create encoder task
+    // xTaskCreate(encoderTask, "encoder_task", 4096, NULL, 5, NULL);
+    // xTaskCreate(exampleRecieve, "example_Recieve", 4096, NULL, 5, NULL);
 
 
     xTaskCreate(ultrasonic_test, "ultrasonic_test", configMINIMAL_STACK_SIZE * 3, NULL, tskIDLE_PRIORITY, NULL);
