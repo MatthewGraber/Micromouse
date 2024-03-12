@@ -485,7 +485,8 @@ void Scan() {
 
 
     // Front
-    if (xQueueReceive(UsQueue, &frontDistance, (TickType_t ) 0) == pdPASS) {
+    if (xQueueReceive(UsQueue, &frontDistance, 0) == pdPASS) {
+        printf("Front distance: %f\n", frontDistance);
         if (frontDistance < MAX_DISTANCE) {
             closestFront = (int)(frontDistance / WALL_LENGTH);
             struct Node *updatedNode = full_maze.currentNode;

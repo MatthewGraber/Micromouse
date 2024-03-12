@@ -209,10 +209,10 @@ void app_main(void)
 
     // Create encoder task
     xTaskCreate(encoderTask, "encoder_task", 4096, NULL, tskIDLE_PRIORITY, NULL);
-    // xTaskCreate(exampleRecieve, "example_Recieve", 4096, NULL, tskIDLE_PRIORITY, NULL);
+    xTaskCreate(exampleRecieve, "example_Recieve", 4096, NULL, tskIDLE_PRIORITY, NULL);
 
 
-    // xTaskCreate(ultrasonic_test, "ultrasonic_test", configMINIMAL_STACK_SIZE * 3, NULL, tskIDLE_PRIORITY, NULL);
+    xTaskCreate(ultrasonic_test, "ultrasonic_test", configMINIMAL_STACK_SIZE * 3, NULL, tskIDLE_PRIORITY, NULL);
     // configASSERT(ultrasonic_test);
 
     // if(pathfind_task != NULL)

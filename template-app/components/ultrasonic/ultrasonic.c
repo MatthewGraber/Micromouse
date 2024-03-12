@@ -68,22 +68,6 @@ static portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 #define CHECK(x) do { esp_err_t __; if ((__ = x) != ESP_OK) return __; } while (0)
 #define RETURN_CRITICAL(RES) do { PORT_EXIT_CRITICAL; return RES; } while(0)
 
-//Test "Clean up later"
-/*
-#define ESP_INTR_FLAG_DEFAULT 0
-esp_err_t gpio_intr_enable(echo_pin);
-esp_err_t gpio_set_intr_type(echo_pin,GPIO_INTR_ANYEDGE);
-esp_err_t gpio_isr_register(void (*gpio_isr_handler)(void*),void *arg, int, gpio_isr_handle_t *handle);
-int64_t echo_time;
-
-
-void IRAM_ATTR gpio_isr_handler(void* arg)
-{
-    //echo_time = esp_timer_get_time();
-}
-*/
-
-
 esp_err_t ultrasonic_init(const ultrasonic_sensor_t *dev)
 {
     CHECK_ARG(dev);
@@ -96,10 +80,7 @@ esp_err_t ultrasonic_init(const ultrasonic_sensor_t *dev)
 
 
 esp_err_t ultrasonic_measure_raw(const ultrasonic_sensor_t *dev, uint32_t max_time_us, uint32_t *time_us)
-{   
-    //int64_t echo_start=1;
-    //int64_t time= 0;
-
+{
     CHECK_ARG(dev && time_us);
 
     PORT_ENTER_CRITICAL;
@@ -114,29 +95,7 @@ esp_err_t ultrasonic_measure_raw(const ultrasonic_sensor_t *dev, uint32_t max_ti
     // Previous ping isn't ended
     if (gpio_get_level(dev->echo_pin))
         RETURN_CRITICAL(ESP_ERR_ULTRASONIC_PING);
-    /*
-    // Wait for echo
-    int64_t start = esp_timer_get_time();
-    while (gpio_get_level(dev->echo_pin))
-    {
-        if (timeout_expired(start, PING_TIMEOUT))
-            RETURN_CRITICAL(ESP_ERR_ULTRASONIC_PING_TIMEOUT);
-    }
-    if(gpio_get_level(dev->echo_pin))
-    {
-        //echo_start = echo_time;
-    }
-    while (gpio_get_level(dev->echo_pin))
-    {
-        if (timeout_expired(echo_start, max_time_us))
-            RETURN_CRITICAL(ESP_ERR_ULTRASONIC_ECHO_TIMEOUT);
-    }
-    if(!gpio_get_level(dev->echo_pin))
-    {
-       // time = echo_time;
-    }
-*/
-//*
+
     // Wait for echo
     int64_t start = esp_timer_get_time();
     while (!gpio_get_level(dev->echo_pin))
@@ -155,15 +114,8 @@ esp_err_t ultrasonic_measure_raw(const ultrasonic_sensor_t *dev, uint32_t max_ti
             RETURN_CRITICAL(ESP_ERR_ULTRASONIC_ECHO_TIMEOUT);
     }
     PORT_EXIT_CRITICAL;
-//
-    if (time>echo_start)
-    {
-        *time_us = time - echo_start;
-    }
-    else
-    {
-        return ESP_ERR_ULTRASONIC_PING;
-    }
+
+    *time_us = time - echo_start;
 
     return ESP_OK;
 }
