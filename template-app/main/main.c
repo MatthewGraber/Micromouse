@@ -198,21 +198,21 @@ void app_main(void)
     
     xSemaphoreGive(scan_semaphore);
 
-    xTaskCreate( PathfindTask, "PATHFIND", STACK_SIZE, &uc_param_pathfind, 1, &pathfind_task );
+    xTaskCreate(PathfindTask, "PATHFIND", STACK_SIZE, &uc_param_pathfind, 1, &pathfind_task );
     // configASSERT(pathfind_task);
     
-    xTaskCreate( ScanTask, "SCAN", STACK_SIZE, &uc_param_scan, 1, &scan_task );
+    xTaskCreate(ScanTask, "SCAN", STACK_SIZE, &uc_param_scan, 1, &scan_task );
     // configASSERT(scan_task);
 
-    // xTaskCreate( MoveTask, "MOVE", STACK_SIZE, &uc_param_move, tskIDLE_PRIORITY, &move_task );
+    xTaskCreate(MoveTask, "MOVE", STACK_SIZE, &uc_param_move, tskIDLE_PRIORITY, &move_task );
     // configASSERT(move_task);
 
     // Create encoder task
-    // xTaskCreate(encoderTask, "encoder_task", 4096, NULL, 5, NULL);
-    // xTaskCreate(exampleRecieve, "example_Recieve", 4096, NULL, 5, NULL);
+    xTaskCreate(encoderTask, "encoder_task", 4096, NULL, tskIDLE_PRIORITY, NULL);
+    // xTaskCreate(exampleRecieve, "example_Recieve", 4096, NULL, tskIDLE_PRIORITY, NULL);
 
 
-    xTaskCreate(ultrasonic_test, "ultrasonic_test", configMINIMAL_STACK_SIZE * 3, NULL, tskIDLE_PRIORITY, NULL);
+    // xTaskCreate(ultrasonic_test, "ultrasonic_test", configMINIMAL_STACK_SIZE * 3, NULL, tskIDLE_PRIORITY, NULL);
     // configASSERT(ultrasonic_test);
 
     // if(pathfind_task != NULL)

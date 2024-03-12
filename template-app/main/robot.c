@@ -74,8 +74,8 @@ void Move() {
 void TurnRight() {
     
     // TODO: spin motors
-    brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_0, 100); // motor 1 (left)
-    brushed_motor_stop(MCPWM_UNIT_0, MCPWM_TIMER_1); // motor 2 (right)
+    brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_1, 100); // motor 1 (left)
+    brushed_motor_stop(MCPWM_UNIT_0, MCPWM_TIMER_0); // motor 2 (right)
 
     printf("Turning right\n");
 
@@ -101,14 +101,15 @@ void TurnLeft() {
     printf("Turning left\n");
     
     // Spin motors
-    brushed_motor_stop(MCPWM_UNIT_0, MCPWM_TIMER_0); // motor 1 (left)
+    brushed_motor_stop(MCPWM_UNIT_0, MCPWM_TIMER_1); // motor 1 (left)
 
     while (right_dist - RIGHT_START < TARGET_DIST) {
         xQueueReceive(distanceQueue2, &right_dist, 0);
-
+        // printf("Distance turned left: %f\n", right_dist- RIGHT_START);
         // Creates a gain based on the percentage of the distance covered
         float gain = ((TARGET_DIST - right_dist) / TARGET_DIST) * (100-BASE_POWER);
-        brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_1, BASE_POWER + gain); // motor 2 (right)
+        brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_0, BASE_POWER + gain); // motor 2 (right)
+        vTaskDelay(1);
     }
 
 
@@ -125,8 +126,13 @@ void GoStraight() {
     const float GAIN = 0.5;
     const float BASE_POWER = 80;
 
+    printf("Moving straight\n");
+    
     xQueueReceive(distanceQueue1, &LEFT_START, portMAX_DELAY);
+    printf("Got left distance\n");
     xQueueReceive(distanceQueue2, &RIGHT_START, portMAX_DELAY);
+    printf("Got right distance\n");
+
     left_dist = LEFT_START;
     right_dist = RIGHT_START;
 
@@ -134,7 +140,6 @@ void GoStraight() {
     brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_0, BASE_POWER); // motor 1 (left)
     brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_1, BASE_POWER); // motor 2 (right)
 
-    printf("Moving straight\n");
 
     // Exit condition
     // Drive until both distances are greater than the target distance
@@ -145,8 +150,9 @@ void GoStraight() {
         // Diff is positive if the right wheel has moved more and negative if the left wheel has moved more
         float diff = (right_dist - RIGHT_START) - (left_dist - LEFT_START);
 
-        brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_0, BASE_POWER + diff*GAIN); // motor 1 (left)
-        brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_1, BASE_POWER - diff*GAIN); // motor 2 (right)
+        brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_1, BASE_POWER + diff*GAIN); // motor 1 (left)
+        brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_0, BASE_POWER - diff*GAIN); // motor 2 (right)
+        vTaskDelay(1);
     }
 
     // vTaskDelay(100);

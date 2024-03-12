@@ -1,9 +1,9 @@
 #include "encoder.h"
 
-#define ENCODER_1_CHANNEL_A_PIN GPIO_NUM_15
-#define ENCODER_1_CHANNEL_B_PIN GPIO_NUM_16
-#define ENCODER_2_CHANNEL_A_PIN GPIO_NUM_17
-#define ENCODER_2_CHANNEL_B_PIN GPIO_NUM_18
+#define ENCODER_1_CHANNEL_A_PIN GPIO_NUM_40
+#define ENCODER_1_CHANNEL_B_PIN GPIO_NUM_39
+#define ENCODER_2_CHANNEL_A_PIN GPIO_NUM_42
+#define ENCODER_2_CHANNEL_B_PIN GPIO_NUM_41
 
 volatile int32_t encoderCount1 = 0;
 volatile int32_t encoderCount2 = 0;
@@ -85,7 +85,8 @@ void encoderTask(void *pvParameters)
             // printf("Position: %ld   Distance: %f\n", receivedCount1, distance1);
 
             // Send the updated distance to the queue
-            xQueueSend(distanceQueue1, &distance1, portMAX_DELAY);
+            xQueueOverwrite(distanceQueue1, &distance1);
+            // printf("Updated distance of encoder 1: %f\n", distance1);
         }
         if (xQueueReceive(encoderQueue2, &receivedCount2, 0))
         {
@@ -93,7 +94,8 @@ void encoderTask(void *pvParameters)
             // printf("Position: %ld   Distance: %f\n", receivedCount2, distance2);
 
             // Send the updated distance to the queue
-            xQueueSend(distanceQueue2, &distance2, portMAX_DELAY);
+            xQueueOverwrite(distanceQueue2, &distance2);
+            // printf("Updated distance of encoder 2: %f\n", distance2);
         }
         vTaskDelay(1);
     }
@@ -132,6 +134,6 @@ void initializeEncoder()
     encoderQueue1 = xQueueCreate(10, sizeof(int32_t));
     encoderQueue2 = xQueueCreate(10, sizeof(int32_t));
 
-    distanceQueue1 = xQueueCreate(10, sizeof(float));
-    distanceQueue2 = xQueueCreate(10, sizeof(float));
+    distanceQueue1 = xQueueCreate(1, sizeof(float));
+    distanceQueue2 = xQueueCreate(1, sizeof(float));
 }
