@@ -24,7 +24,9 @@ struct Maze full_maze;
 SemaphoreHandle_t maze_mutex;
 
 // Queues
-QueueHandle_t UsQueue;
+QueueHandle_t UsQueue1;
+QueueHandle_t UsQueue2;
+QueueHandle_t UsQueue3;
 
 struct Node maze[10][10];
 
@@ -137,19 +139,15 @@ void maze4() {
 }
 
 
-void exampleRecieve()
-{
+void exampleRecieve() {
     float distance1 = 0;
     float distance2 = 0;
 
-    while (1)
-    {
-        if (xQueueReceive(distanceQueue1, &distance1, 0))
-        {
+    while (1) {
+        if (xQueueReceive(distanceQueue1, &distance1, 0)) {
             printf("Distance1: %f, Distance2:%f\n", distance1, distance2);
         }
-        if (xQueueReceive(distanceQueue2, &distance2, 0))
-        {
+        if (xQueueReceive(distanceQueue2, &distance2, 0)) {
             printf("Distance1: %f, Distance2:%f\n", distance1, distance2);
         }
         vTaskDelay(1);
@@ -159,14 +157,39 @@ void exampleRecieve()
 
 void SillyOldWay();
 
-void app_main(void)
-{
+void app_main(void) {
     // Initalize semaphores
     scan_semaphore = xSemaphoreCreateBinary();
     pathfind_semaphore = xSemaphoreCreateBinary();
     maze_mutex = xSemaphoreCreateMutex();
     
-    UsQueue = xQueueCreate( 1, sizeof( float));
+    // Ultrasonic stuff
+    //Sensor 1 (left)
+    UsQueue1 = xQueueCreate( 1, sizeof( float));
+    struct USParam us1;
+    us1.ECHO_GPIO = 17;
+    us1.TRIGGER_GPIO = 18;
+    us1.Usqueue = UsQueue1;
+    float distance1;
+    xTaskCreate(ultrasonic_test, "ultrasonic_test", configMINIMAL_STACK_SIZE * 5,(void*) &us1, 5, NULL);
+    
+    //Sensor 2 (right)
+    UsQueue2 = xQueueCreate( 1, sizeof( float));
+    struct USParam us2;
+    us2.ECHO_GPIO = 12;
+    us2.TRIGGER_GPIO = 11;
+    us2.Usqueue = UsQueue2;
+    float distance2;
+    xTaskCreate(ultrasonic_test, "ultrasonic_test", configMINIMAL_STACK_SIZE * 5,(void*) &us2, 5, NULL);
+
+    //Sensor 3 (forward)
+    UsQueue3 = xQueueCreate( 1, sizeof( float));
+    struct USParam us3;
+    us3.ECHO_GPIO = 3;
+    us3.TRIGGER_GPIO = 8;
+    us3.Usqueue = UsQueue3;
+    float distance3;
+    xTaskCreate(ultrasonic_test, "ultrasonic_test", configMINIMAL_STACK_SIZE * 5,(void*) &us3, 5, NULL);
 
     //time_t t;
     //void srand(unsigned int time(&t))
@@ -207,72 +230,14 @@ void app_main(void)
     xTaskCreate(MoveTask, "MOVE", STACK_SIZE, &uc_param_move, tskIDLE_PRIORITY, &move_task );
     // configASSERT(move_task);
 
+
+
     // Create encoder task
     xTaskCreate(encoderTask, "encoder_task", 4096, NULL, tskIDLE_PRIORITY, NULL);
-    xTaskCreate(exampleRecieve, "example_Recieve", 4096, NULL, tskIDLE_PRIORITY, NULL);
+    // xTaskCreate(exampleRecieve, "example_Recieve", 4096, NULL, tskIDLE_PRIORITY, NULL);
 
 
-    xTaskCreate(ultrasonic_test, "ultrasonic_test", configMINIMAL_STACK_SIZE * 3, NULL, tskIDLE_PRIORITY, NULL);
+    // xTaskCreate(ultrasonic_test, "ultrasonic_test", configMINIMAL_STACK_SIZE * 3, NULL, tskIDLE_PRIORITY, NULL);
     // configASSERT(ultrasonic_test);
 
-    // if(pathfind_task != NULL)
-    // {
-    //     vTaskDelete(pathfind_task);
-    // }
-
-    // if(scan_task != NULL)
-    // {
-    //     vTaskDelete(scan_task);
-    // }
-
-    // if(move_task != NULL)
-    // {
-    //     vTaskDelete(move_task);
-    // }
-
-    //printf("hello world");
-}
-
-
-void SillyOldWay() {
-    bool goingToCenter = true;
-    // int present;
-    // int past = esp_timer_get_time();
-
-    while (1) {
-        // printMaze(maze, currentNode);
-        // present = esp_timer_get_time();
-        // if (present - past >= 1000000) {
-        //     printf("Tick\n");
-        //     past = present;
-        // }
-
-        vTaskDelay(100);
-
-
-        // Maybe add something to the maze
-        if (rand() % 2 == 0) {
-            int x = rand() % 10;
-            int y = rand() % 10;
-            int head = rand() % 4;
-
-            update_connection(maze, &(maze[x][y]), head, false);            
-        }
-
-        Pathfind(maze);
-        nextNode = NextNode(maze, currentNode, goingToCenter);
-        currentNode = nextNode;
-        
-        if (goingToCenter && currentNode->dist_to_center == 0) {
-            printf("Going to start!\n");
-            goingToCenter = false;
-            // PrintDistanceToCenter(maze);
-        }
-        else if (!goingToCenter && currentNode->dist_to_start == 0) {
-            printf("Going to center!\n");
-            goingToCenter = true;
-            // PrintDistanceToCenter(maze);
-
-        }
-    }
 }

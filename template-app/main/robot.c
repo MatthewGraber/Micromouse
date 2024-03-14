@@ -9,6 +9,7 @@
 #include "maze.h"
 #include "motor_control.h"
 #include "encoder.h"
+#include "ultrasonicLaunch.h"
 
 
 extern SemaphoreHandle_t maze_mutex;
@@ -16,6 +17,11 @@ extern struct Maze full_maze;
 
 extern SemaphoreHandle_t scan_semaphore;
 extern SemaphoreHandle_t pathfind_semaphore;
+
+
+extern QueueHandle_t UsQueue1;
+extern QueueHandle_t UsQueue2;
+extern QueueHandle_t UsQueue3;
 
 
 void Move() {
@@ -62,9 +68,6 @@ void Move() {
 
         GoStraight();
 
-        brushed_motor_stop(MCPWM_UNIT_0, MCPWM_TIMER_0);
-        brushed_motor_stop(MCPWM_UNIT_0, MCPWM_TIMER_1);
-
         xSemaphoreGive(maze_mutex);
         xSemaphoreGive(scan_semaphore);
     }
@@ -82,6 +85,7 @@ void TurnRight() {
     vTaskDelay(100);
     full_maze.heading = (full_maze.heading + 1) % 4;
     printMaze();
+    Stop();
 }
 
 
@@ -116,18 +120,29 @@ void TurnLeft() {
     // vTaskDelay(100);
     full_maze.heading = (full_maze.heading - 1) % 4;
     printMaze();
+    Stop();
 }
 
 
 void GoStraight() {
-    float LEFT_START, RIGHT_START;
-    float left_dist, right_dist;
     const float TARGET_DIST = 10*25.4;  // mm
     const float GAIN = 0.5;
     const float BASE_POWER = 80;
+    const float STOP_DIST = 3.0;    // Stop if the ultrasonic sees something this close
+
+    float LEFT_START, RIGHT_START;
+    // Encoder readings
+    float left_dist, right_dist;
+    // Ultrasonic readings (cm)
+    float front_ultra = 0, left_ultra = 0, right_ultra = 0;
+    
 
     printf("Moving straight\n");
     
+    // Spin motors
+    brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_0, BASE_POWER); // motor 1 (left)
+    brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_1, BASE_POWER); // motor 2 (right)
+
     xQueueReceive(distanceQueue1, &LEFT_START, portMAX_DELAY);
     printf("Got left distance\n");
     xQueueReceive(distanceQueue2, &RIGHT_START, portMAX_DELAY);
@@ -136,9 +151,6 @@ void GoStraight() {
     left_dist = LEFT_START;
     right_dist = RIGHT_START;
 
-    // Spin motors
-    brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_0, BASE_POWER); // motor 1 (left)
-    brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_1, BASE_POWER); // motor 2 (right)
 
 
     // Exit condition
@@ -146,6 +158,13 @@ void GoStraight() {
     while ((left_dist - LEFT_START < TARGET_DIST) || (right_dist - RIGHT_START < TARGET_DIST)) {
         xQueueReceive(distanceQueue1, &left_dist, 0);
         xQueueReceive(distanceQueue2, &right_dist, 0);
+        
+        // If we're close to the forward-facing wall, stop moving forwards
+        // if(xQueueReceive(UsQueue3, &front_ultra, 0))
+        //     printf("Front distance %f\n", front_ultra);
+        // if (front_ultra <= STOP_DIST) {
+        //     break;
+        // }
 
         // Diff is positive if the right wheel has moved more and negative if the left wheel has moved more
         float diff = (right_dist - RIGHT_START) - (left_dist - LEFT_START);
@@ -155,9 +174,17 @@ void GoStraight() {
         vTaskDelay(1);
     }
 
+    Stop();
     // vTaskDelay(100);
     full_maze.currentNode = full_maze.nextNode;
     printMaze();
+}
+
+
+// Stops the motors
+void Stop() {
+    brushed_motor_stop(MCPWM_UNIT_0, MCPWM_TIMER_0);
+    brushed_motor_stop(MCPWM_UNIT_0, MCPWM_TIMER_1);
 }
 
 

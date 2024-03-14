@@ -2,8 +2,8 @@
 
 #define ENCODER_1_CHANNEL_A_PIN GPIO_NUM_40
 #define ENCODER_1_CHANNEL_B_PIN GPIO_NUM_39
-#define ENCODER_2_CHANNEL_A_PIN GPIO_NUM_42
-#define ENCODER_2_CHANNEL_B_PIN GPIO_NUM_41
+#define ENCODER_2_CHANNEL_A_PIN GPIO_NUM_41
+#define ENCODER_2_CHANNEL_B_PIN GPIO_NUM_42
 
 volatile int32_t encoderCount1 = 0;
 volatile int32_t encoderCount2 = 0;

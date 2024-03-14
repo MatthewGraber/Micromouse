@@ -11,20 +11,24 @@
 
 #define MAX_DISTANCE_CM 500 // 5m max
 
-#define TRIGGER_GPIO 19
-#define ECHO_GPIO 18
+//#define TRIGGER_GPIO 19
+//#define ECHO_GPIO 18
 
 #define MAX_SIZE 1
 
-extern QueueHandle_t UsQueue;
+//extern QueueHandle_t UsQueue1;
 
 
-
-
-
-
-void ultrasonic_test(void *pvParameters)
+void ultrasonic_test(void* pvParameters)
 {   
+    struct USParam *us = pvParameters; 
+    
+    int TRIGGER_GPIO= us->TRIGGER_GPIO;
+    int ECHO_GPIO = us->ECHO_GPIO;
+    printf("Trigger %d\n",TRIGGER_GPIO);
+    printf("Echo %d\n",ECHO_GPIO);
+    QueueHandle_t UsQueue = (us->Usqueue);
+
     float distance2 = 0;
     float distance3 = 0;
     float avDis = 0;
@@ -63,7 +67,8 @@ void ultrasonic_test(void *pvParameters)
         {
             // printf("avDis = %0.04f cm\n", avDis*100);
             avDis = (distance+distance2+distance3)/3.0;
-            if ((avDis - distance)*100 > 2 || (avDis - distance)*100 <-2)
+            //if ((avDis - distance)*100 > 2 || (avDis - distance)*100 <-2)
+            if(false)
             {
                 printf("Average Sink Error\n");
                 //printf("Distance: %0.04f cm\n",distance*100);
@@ -73,7 +78,8 @@ void ultrasonic_test(void *pvParameters)
             }
             else
             {
-                if ( (distance2 - distance)*100 > 5 || (distance2 - distance)*100 <-5)
+                //if ( (distance2 - distance)*100 > 5 || (distance2 - distance)*100 <-5)
+                if(false)
                 {
                     printf("Data Error\n");
                 }
@@ -82,7 +88,6 @@ void ultrasonic_test(void *pvParameters)
                     // printf("avDis = %0.04f cm\n", avDis*100);
                     //printf("Distance: %0.04f cm\n", distance*100);
                     float distanceSend = distance*100;
-                    printf("Distance: %f cm\n", distanceSend);
                     xQueueOverwrite(UsQueue,&distanceSend);
                     
                     //xQueueOverwriteFromISR(UsQueue, &distance, pdTRUE);

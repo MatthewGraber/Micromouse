@@ -1,6 +1,7 @@
 #include "maze.h"
 #include <stdlib.h>
 #include <time.h>
+#include <robot.h>
 
 #include "esp_timer.h"
 
@@ -29,7 +30,8 @@ extern struct Maze full_maze;
 extern SemaphoreHandle_t maze_mutex;
 
 // Queues
-extern QueueHandle_t UsQueue;
+extern QueueHandle_t UsQueue2;
+extern QueueHandle_t UsQueue3;
 
 // Initialize the nodes
 void initalizeMaze(struct Node maze[10][10]) {
@@ -460,8 +462,8 @@ void Scan() {
     
     // Wall length in cm
     float WALL_LENGTH = 25.4;
-    // Furthest distance we can trust to be accurate
-    float MAX_DISTANCE = 100;
+    // Furthest distance at which we will consider there to be a wall next to us
+    float MAX_DISTANCE = 10;     // cm
 
 
     // Placeholders for the ultrasonic readings
@@ -470,49 +472,25 @@ void Scan() {
     float leftDistance = MAX_DISTANCE;
     float rightDistance = MAX_DISTANCE;
 
-    int closestFront = 0;
-    int closestLeft = 0;
-    int closestRight = 0;
-
     printf("Scanning\n");
 
     // Stop the motors
-    // TODO: this
-
-
+    Stop();
+    
     // Wait for a bit
-    // TODO: this
+    vTaskDelay(100);
+    
+    // We need to be VERY CERTAIN that the ultrasonic readings are recent, so clear them now
+    xQueueReceive(UsQueue3, &frontDistance, 0);
+    // TODO: Add the others
+    
 
 
     // Front
-    if (xQueueReceive(UsQueue, &frontDistance, 0) == pdPASS) {
+    if (xQueueReceive(UsQueue3, &frontDistance, portMAX_DELAY) == pdPASS) {
         printf("Front distance: %f\n", frontDistance);
         if (frontDistance < MAX_DISTANCE) {
-            closestFront = (int)(frontDistance / WALL_LENGTH);
-            struct Node *updatedNode = full_maze.currentNode;
-
-            // update_connection(maze, currentNode, currentHeading, false);
-            switch (full_maze.heading) {
-            case North:
-                updatedNode = &full_maze.maze[full_maze.currentNode->x][full_maze.currentNode->y-closestFront];
-                break;
-
-            case East:
-                updatedNode = &full_maze.maze[full_maze.currentNode->x + closestFront][full_maze.currentNode->y];
-                break;
-            
-            case South:
-                updatedNode = &full_maze.maze[full_maze.currentNode->x][full_maze.currentNode->y+closestFront];
-                break;
-
-            case West:
-                updatedNode = &full_maze.maze[full_maze.currentNode->x - closestFront][full_maze.currentNode->y];
-                break;
-
-            }
-
-            update_connection(full_maze.maze, updatedNode, full_maze.heading, false);
-            
+            update_connection(full_maze.maze, full_maze.currentNode, full_maze.heading, false);
         }
     }
 
