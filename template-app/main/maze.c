@@ -30,6 +30,7 @@ extern struct Maze full_maze;
 extern SemaphoreHandle_t maze_mutex;
 
 // Queues
+extern QueueHandle_t UsQueue1;
 extern QueueHandle_t UsQueue2;
 extern QueueHandle_t UsQueue3;
 
@@ -463,14 +464,14 @@ void Scan() {
     // Wall length in cm
     float WALL_LENGTH = 25.4;
     // Furthest distance at which we will consider there to be a wall next to us
-    float MAX_DISTANCE = 10;     // cm
+    float MAX_DISTANCE = 15;     // cm
 
 
     // Placeholders for the ultrasonic readings
     // float frontDistance = MAX_DISTANCE;
     float frontDistance;
-    float leftDistance = MAX_DISTANCE;
-    float rightDistance = MAX_DISTANCE;
+    float leftDistance;
+    float rightDistance;
 
     printf("Scanning\n");
 
@@ -481,10 +482,26 @@ void Scan() {
     vTaskDelay(100);
     
     // We need to be VERY CERTAIN that the ultrasonic readings are recent, so clear them now
-    xQueueReceive(UsQueue3, &frontDistance, 0);
-    // TODO: Add the others
-    
+    xQueueReceive(UsQueue1, &leftDistance, 0);
+    xQueueReceive(UsQueue2, &rightDistance, 0);
+    xQueueReceive(UsQueue3, &frontDistance, 0);    
 
+
+    // Left
+    if (xQueueReceive(UsQueue1, &leftDistance, portMAX_DELAY) == pdPASS) {
+        printf("Left distance: %f\n", leftDistance);
+        if (leftDistance < MAX_DISTANCE) {
+            update_connection(full_maze.maze, full_maze.currentNode, (full_maze.heading - 1) % 4, false);
+        }
+    }
+
+    // Right
+    if (xQueueReceive(UsQueue2, &rightDistance, portMAX_DELAY) == pdPASS) {
+        printf("Right distance: %f\n", rightDistance);
+        if (rightDistance < MAX_DISTANCE) {
+            update_connection(full_maze.maze, full_maze.currentNode, (full_maze.heading + 1) % 4, false);
+        }
+    }
 
     // Front
     if (xQueueReceive(UsQueue3, &frontDistance, portMAX_DELAY) == pdPASS) {
@@ -493,8 +510,6 @@ void Scan() {
             update_connection(full_maze.maze, full_maze.currentNode, full_maze.heading, false);
         }
     }
-
-
 }
 
 

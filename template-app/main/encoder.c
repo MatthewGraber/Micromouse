@@ -10,8 +10,8 @@ volatile int32_t encoderCount2 = 0;
 
 QueueHandle_t encoderQueue1;
 QueueHandle_t encoderQueue2;
-QueueHandle_t distanceQueue1;
-QueueHandle_t distanceQueue2;
+QueueHandle_t distanceQueueRight;
+QueueHandle_t distanceQueueLeft;
 
 void IRAM_ATTR encoderPulseISR1(void *arg)
 {
@@ -85,7 +85,7 @@ void encoderTask(void *pvParameters)
             // printf("Position: %ld   Distance: %f\n", receivedCount1, distance1);
 
             // Send the updated distance to the queue
-            xQueueOverwrite(distanceQueue1, &distance1);
+            xQueueOverwrite(distanceQueueRight, &distance1);
             // printf("Updated distance of encoder 1: %f\n", distance1);
         }
         if (xQueueReceive(encoderQueue2, &receivedCount2, 0))
@@ -94,7 +94,7 @@ void encoderTask(void *pvParameters)
             // printf("Position: %ld   Distance: %f\n", receivedCount2, distance2);
 
             // Send the updated distance to the queue
-            xQueueOverwrite(distanceQueue2, &distance2);
+            xQueueOverwrite(distanceQueueLeft, &distance2);
             // printf("Updated distance of encoder 2: %f\n", distance2);
         }
         vTaskDelay(1);
@@ -134,6 +134,6 @@ void initializeEncoder()
     encoderQueue1 = xQueueCreate(10, sizeof(int32_t));
     encoderQueue2 = xQueueCreate(10, sizeof(int32_t));
 
-    distanceQueue1 = xQueueCreate(1, sizeof(float));
-    distanceQueue2 = xQueueCreate(1, sizeof(float));
+    distanceQueueRight = xQueueCreate(1, sizeof(float));
+    distanceQueueLeft = xQueueCreate(1, sizeof(float));
 }

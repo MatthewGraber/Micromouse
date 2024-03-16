@@ -144,10 +144,10 @@ void exampleRecieve() {
     float distance2 = 0;
 
     while (1) {
-        if (xQueueReceive(distanceQueue1, &distance1, 0)) {
+        if (xQueueReceive(distanceQueueRight, &distance1, 0)) {
             printf("Distance1: %f, Distance2:%f\n", distance1, distance2);
         }
-        if (xQueueReceive(distanceQueue2, &distance2, 0)) {
+        if (xQueueReceive(distanceQueueLeft, &distance2, 0)) {
             printf("Distance1: %f, Distance2:%f\n", distance1, distance2);
         }
         vTaskDelay(1);
@@ -158,6 +158,10 @@ void exampleRecieve() {
 void SillyOldWay();
 
 void app_main(void) {
+
+    // Delay start
+    vTaskDelay(200);
+
     // Initalize semaphores
     scan_semaphore = xSemaphoreCreateBinary();
     pathfind_semaphore = xSemaphoreCreateBinary();
@@ -196,6 +200,7 @@ void app_main(void) {
 
     initalizeMaze(full_maze.maze);
     full_maze.currentNode = &full_maze.maze[0][0];
+    full_maze.heading = South;
 
     // Initialize
     initializeEncoder();
@@ -218,6 +223,8 @@ void app_main(void) {
     TaskHandle_t pathfind_task = NULL;
     TaskHandle_t scan_task = NULL;
     TaskHandle_t move_task = NULL;
+
+    TaskHandle_t test_task = NULL;
     
     xSemaphoreGive(scan_semaphore);
 
@@ -227,13 +234,14 @@ void app_main(void) {
     xTaskCreate(ScanTask, "SCAN", STACK_SIZE, &uc_param_scan, 1, &scan_task );
     // configASSERT(scan_task);
 
-    xTaskCreate(MoveTask, "MOVE", STACK_SIZE, &uc_param_move, tskIDLE_PRIORITY, &move_task );
+    // xTaskCreate(MoveTask, "MOVE", STACK_SIZE, &uc_param_move, tskIDLE_PRIORITY, &move_task );
     // configASSERT(move_task);
 
 
-
+    // xTaskCreate(TestTaskGoStraight, "GOStraight", STACK_SIZE, NULL, 10, test_task);
+    xTaskCreate(DemoTaskTurnCorner, "DemoTaskTurnRight", STACK_SIZE, NULL, 10, test_task);
     // Create encoder task
-    xTaskCreate(encoderTask, "encoder_task", 4096, NULL, tskIDLE_PRIORITY, NULL);
+    xTaskCreate(encoderTask, "encoder_task", 4096, NULL, 5, NULL);
     // xTaskCreate(exampleRecieve, "example_Recieve", 4096, NULL, tskIDLE_PRIORITY, NULL);
 
 
