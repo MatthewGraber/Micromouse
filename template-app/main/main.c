@@ -201,6 +201,7 @@ void app_main(void) {
     initalizeMaze(full_maze.maze);
     full_maze.currentNode = &full_maze.maze[0][0];
     full_maze.heading = South;
+    full_maze.goingToCenter = true;
 
     // Initialize
     initializeEncoder();
@@ -238,8 +239,8 @@ void app_main(void) {
     // configASSERT(move_task);
 
 
-    // xTaskCreate(TestTaskGoStraight, "GOStraight", STACK_SIZE, NULL, 10, test_task);
-    xTaskCreate(DemoTaskTurnCorner, "DemoTaskTurnRight", STACK_SIZE, NULL, 10, test_task);
+    xTaskCreate(TestTaskGoStraight, "GOStraight", STACK_SIZE, NULL, 10, test_task);
+    // xTaskCreate(DemoTaskTurnCorner, "DemoTaskTurnRight", STACK_SIZE, NULL, 10, test_task);
     // Create encoder task
     xTaskCreate(encoderTask, "encoder_task", 4096, NULL, 5, NULL);
     // xTaskCreate(exampleRecieve, "example_Recieve", 4096, NULL, tskIDLE_PRIORITY, NULL);

@@ -61,7 +61,7 @@ void Move() {
 
         // Turn until the target heading matches the current heading
         while (targetHeading != full_maze.heading) {
-            if (targetHeading > full_maze.heading) {
+            if ((targetHeading-full_maze.heading + 4) % 4 == 1) {
                 TurnRight();
             }
             else {
@@ -73,6 +73,17 @@ void Move() {
         GoStraight();
         Stop();
 
+        // If we're in the center and going to the center, turn around
+        if (full_maze.goingToCenter) { 
+            if ((full_maze.currentNode->x == 4 || full_maze.currentNode->x == 5) &&
+                (full_maze.currentNode->y == 4 || full_maze.currentNode->y == 5)) {
+                full_maze.goingToCenter = false;
+            }
+        }
+        else if (full_maze.currentNode->x == 0 && full_maze.currentNode->y == 0) {
+            full_maze.goingToCenter = true;
+        }
+
         xSemaphoreGive(maze_mutex);
         xSemaphoreGive(scan_semaphore);
     }
@@ -80,39 +91,56 @@ void Move() {
 
 
 void TurnRight() {
-    
     const float PI = 3.14159265358979323846;
-    const float TURN_RADIUS = 90;  // mm
-    const float TARGET_DIST = PI*TURN_RADIUS/2;  // Quarter-turn in mm
+    const float TURN_RADIUS = 30;  // mm
+    // const float TARGET_DIST = PI*TURN_RADIUS/2;  // Quarter-turn in mm
+    const float TARGET_DIST = 30;
     // const float GAIN = 0.01;
     const float BASE_POWER = 70;
+    const float LOW_POWER = 30;
 
-    float LEFT_START = left_encoder;
+    float LEFT_START;
+
+    float left_ultra = 0, right_ultra = 100;
+    const float ULTRA_STOP = 5;     // Distance at which we will stop turning via ultrasonic sensor
 
     // Spin motors
-    // brushed_motor_stop(MCPWM_UNIT_0, MCPWM_TIMER_0);                    // motor 0 (right)
+    // brushed_motor_stop(MCPWM_UNIT_0, MCPWM_TIMER_1);                    // motor 1 (left)
     Stop();
-    // brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_1, BASE_POWER);     // motor 1 (left)
-    // xQueueReceive(distanceQueueRight, &LEFT_START, portMAX_DELAY);
+    // brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_0, BASE_POWER);     // motor 0 (right)
+    xQueueReceive(distanceQueueLeft, &left_encoder, 0);
+    LEFT_START = left_encoder;
 
     printf("Turning right\n");
     
 
-    while (left_encoder - LEFT_START < TARGET_DIST) {
-        xQueueReceive(distanceQueueRight, &left_encoder, 0);
-        // printf("Distance turned left: %f\n", right_dist- RIGHT_START);
+    while ((left_encoder - LEFT_START < TARGET_DIST) || left_ultra < ULTRA_STOP) {
+        xQueueReceive(UsQueue1, &left_ultra, 0);
+        if(xQueueReceive(UsQueue2, &right_ultra, 0) == pdTRUE) {
+            // printf("Left distance %f\n", left_ultra);
+            if (right_ultra <= ULTRA_STOP) {
+                break;
+            }
+        }
+
+        if (xQueueReceive(distanceQueueLeft, &left_encoder, 0) == pdTRUE) {
+            // printf("Distance turned right: %f\n", left_encoder - LEFT_START);
+        }
         // Creates a gain based on the percentage of the distance covered
         float gain = ((TARGET_DIST - (left_encoder - LEFT_START)) / TARGET_DIST) * (100-BASE_POWER);
         // float gain = 0;
-        brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_0, BASE_POWER + gain); // motor 0 (left)
+        brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_0, BASE_POWER); // motor 0 (left)
+        brushed_motor_backward(MCPWM_UNIT_0, MCPWM_TIMER_1, LOW_POWER); // motor 1 (right)
         vTaskDelay(1);
     }
 
-
-    // vTaskDelay(100);
+    // brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_1, BASE_POWER);
+    // brushed_motor_backward(MCPWM_UNIT_0, MCPWM_TIMER_0, LOW_POWER); // motor 0 (left)
+    // vTaskDelay(50);
     full_maze.heading = (full_maze.heading + 1) % 4;
-    printMaze();
+    // printMaze();
     Stop();
+    vTaskDelay(100);
 }
 
 
@@ -150,7 +178,7 @@ void TurnLeft() {
         }
 
         if (xQueueReceive(distanceQueueRight, &right_encoder, 0) == pdTRUE) {
-            printf("Distance turned left: %f\n", right_encoder - RIGHT_START);
+            // printf("Distance turned left: %f\n", right_encoder - RIGHT_START);
         }
         // Creates a gain based on the percentage of the distance covered
         float gain = ((TARGET_DIST - (right_encoder - RIGHT_START)) / TARGET_DIST) * (100-BASE_POWER);
@@ -164,7 +192,7 @@ void TurnLeft() {
     // brushed_motor_backward(MCPWM_UNIT_0, MCPWM_TIMER_0, LOW_POWER); // motor 0 (left)
     // vTaskDelay(50);
     full_maze.heading = (full_maze.heading + 3) % 4;
-    printMaze();
+    // printMaze();
     Stop();
     vTaskDelay(100);
 }
@@ -202,11 +230,12 @@ void GoStraight() {
 
     // Exit condition
     // Drive until both distances are greater than the target distance
-    while ((left_encoder - LEFT_START < TARGET_DIST) || (right_encoder - RIGHT_START < TARGET_DIST)) {
+    while ((left_encoder - LEFT_START < TARGET_DIST) && (right_encoder - RIGHT_START < TARGET_DIST)) {
 
         // If we're close to the left-facing wall, turn more
-        if(xQueueReceive(UsQueue1, &left_ultra, 0) == pdTRUE)
-            printf("Left distance %f\n", left_ultra);
+        if(xQueueReceive(UsQueue1, &left_ultra, 0) == pdTRUE) {
+            // printf("Left distance %f\n", left_ultra);
+        }
         // if (left_ultra <= WALL_CLOSE_DIST) {
         //     left_boost = 15;
         // }
@@ -215,8 +244,9 @@ void GoStraight() {
         // }
 
         // If we're close to the forward-facing wall, stop moving forwards
-        if(xQueueReceive(UsQueue2, &right_ultra, 0) == pdTRUE)
-            printf("Right distance %f\n", right_ultra);
+        if(xQueueReceive(UsQueue2, &right_ultra, 0) == pdTRUE) {
+            // printf("Right distance %f\n", right_ultra);
+        }
         
         if (right_ultra <= WALL_CLOSE_DIST || (left_ultra >= WALL_FAR_DIST && left_ultra <= WALL_VERY_FAR_DIST)) {
             right_boost = ULTRA_GAIN;
@@ -232,8 +262,9 @@ void GoStraight() {
         }
 
         // If we're close to the forward-facing wall, stop moving forwards
-        if(xQueueReceive(UsQueue3, &front_ultra, 0) == pdTRUE)
-            printf("Front distance %f\n", front_ultra);
+        if(xQueueReceive(UsQueue3, &front_ultra, 0) == pdTRUE) {
+            // printf("Front distance %f\n", front_ultra);
+        }
         if (front_ultra <= STOP_DIST) {
             break;
         }
@@ -245,7 +276,7 @@ void GoStraight() {
         // Diff is positive if the right wheel has moved more and negative if the left wheel has moved more
         // float diff = (right_encoder - RIGHT_START) - (left_encoder - LEFT_START);
         float diff = 0;
-        printf("Diff: %f\n", diff);
+        // printf("Diff: %f\n", diff);
 
         brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_0, BASE_POWER + diff*GAIN + left_boost); // motor 0 (left)
         brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_1, BASE_POWER - diff*GAIN + right_boost); // motor 1 (right)
@@ -255,7 +286,7 @@ void GoStraight() {
     // Stop();
     // vTaskDelay(100);
     full_maze.currentNode = full_maze.nextNode;
-    printMaze();
+    // printMaze();
 }
 
 

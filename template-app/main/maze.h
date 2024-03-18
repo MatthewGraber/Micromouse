@@ -33,6 +33,7 @@ struct Maze {
     struct Node* currentNode;
     struct Node* nextNode;
     bool moving;
+    bool goingToCenter;
     int heading;
 };
 

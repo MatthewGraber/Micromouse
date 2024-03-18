@@ -234,7 +234,7 @@ void Pathfind(struct Node maze[10][10]) {
 struct Node* NextNode(struct Node maze[10][10], struct Node *currentNode, bool goingToCenter) {
     // printf("Next node\n");
     
-    if (goingToCenter) { 
+    if (full_maze.goingToCenter) { 
 
         struct Node *closestNode = currentNode;
         int x = currentNode->x;
@@ -491,7 +491,7 @@ void Scan() {
     if (xQueueReceive(UsQueue1, &leftDistance, portMAX_DELAY) == pdPASS) {
         printf("Left distance: %f\n", leftDistance);
         if (leftDistance < MAX_DISTANCE) {
-            update_connection(full_maze.maze, full_maze.currentNode, (full_maze.heading - 1) % 4, false);
+            update_connection(full_maze.maze, full_maze.currentNode, (full_maze.heading + 3) % 4, false);
         }
     }
 
@@ -510,6 +510,8 @@ void Scan() {
             update_connection(full_maze.maze, full_maze.currentNode, full_maze.heading, false);
         }
     }
+
+    printMaze();
 }
 
 
