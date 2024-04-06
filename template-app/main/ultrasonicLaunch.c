@@ -103,6 +103,6 @@ void ultrasonic_test(void* pvParameters)
         //clock_t end = clock();
         //double time_spent =  (double)((end-begin)/_CLOCKS_PER_SEC_)*1000.0;
         //printf("Response Time: %f us\n",time_spent);
-        vTaskDelay(pdMS_TO_TICKS(10));
+        vTaskDelay(pdMS_TO_TICKS(20));
     }
 }

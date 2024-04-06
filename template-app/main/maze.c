@@ -155,7 +155,7 @@ void Pathfind(struct Node maze[10][10]) {
     // printf("Reset values\n");
 
     // Value tracks what distance we currently are from the center
-    for (int value = 0; (maze[0][0].dist_to_center == -1) && (value < 100); value++) {
+    for (int value = 0; (full_maze.currentNode->dist_to_center == -1 || full_maze.currentNode->dist_to_start == -1) && (value < 100); value++) {
         for (int x = 0; x < 10; x++) {
             for (int y = 0; y < 10; y++) {
                 if (maze[x][y].dist_to_center == value) {
@@ -493,6 +493,9 @@ void Scan() {
         if (leftDistance < MAX_DISTANCE) {
             update_connection(full_maze.maze, full_maze.currentNode, (full_maze.heading + 3) % 4, false);
         }
+        else {
+            update_connection(full_maze.maze, full_maze.currentNode, (full_maze.heading + 3) % 4, true);
+        }
     }
 
     // Right
@@ -501,6 +504,9 @@ void Scan() {
         if (rightDistance < MAX_DISTANCE) {
             update_connection(full_maze.maze, full_maze.currentNode, (full_maze.heading + 1) % 4, false);
         }
+        else {
+            update_connection(full_maze.maze, full_maze.currentNode, (full_maze.heading + 1) % 4, true);
+        }
     }
 
     // Front
@@ -508,6 +514,9 @@ void Scan() {
         printf("Front distance: %f\n", frontDistance);
         if (frontDistance < MAX_DISTANCE) {
             update_connection(full_maze.maze, full_maze.currentNode, full_maze.heading, false);
+        }
+        else {
+            update_connection(full_maze.maze, full_maze.currentNode, full_maze.heading, true);
         }
     }
 
