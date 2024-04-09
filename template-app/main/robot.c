@@ -32,59 +32,100 @@ static float gyroHeading = 0;
 void Move() { 
 
     int targetHeading = North;
-    int xDif, yDif;
+
+    // 0 = scan, 1 = pathfind, 2 = move
+    static int state = 0;
+    static bool goingToCenter = true;
+    static int counter = 0;
 
     // printf("Attempting to move\n");
 
-    xDif = full_maze.currentNode->x - full_maze.nextNode->x;    // -1 == East, 1 == West
-    yDif = full_maze.currentNode->y - full_maze.nextNode->y;    // -1 == South, 1 == North
-
-    // Ensure that the direction of the next node is valid
-    if ((xDif == 0) == (yDif == 0)) {
-        // If it is invalid, exit this task and call the Navigate task
-        xSemaphoreGive(maze_mutex);
-        xSemaphoreGive(pathfind_semaphore);
+    // Scan
+    if (state == 0) {
+        Scan();
+        state = 1;
     }
-    else {
-        // Find the correct target heading
-        // printf("Finding target heading\n");
-        if (xDif == -1) {
-            targetHeading = East;
+    // Pathfind
+    else if (state == 1) {
+        // Switch direction if necessary
+        if ((full_maze.currentNode->x == 4 || full_maze.currentNode->x == 5) &&
+            (full_maze.currentNode->y == 4 || full_maze.currentNode->y == 5)) {
+
+            goingToCenter = false;
         }
-        else if (xDif == 1) {
-            targetHeading = West;
+        else if (full_maze.currentNode->x == 0 && full_maze.currentNode->y == 0) {
+            goingToCenter = true;
         }
-        else if (yDif == -1) {
-            targetHeading = South;
+
+        // Find the next location to move to
+        Pathfind(full_maze.maze);
+        full_maze.nextNode = NextNode(full_maze.maze, full_maze.currentNode, goingToCenter);
+        if (full_maze.nextNode == full_maze.currentNode) {
+            state = 0;
+            printf("Couldn't find next node!\n");
+            vTaskDelay(10);
+
+            // If we can't find a path, clear the maze
+            counter++;
+            if (counter >= 10) {
+                initalizeMaze(full_maze.maze);
+            }
         }
         else {
-            targetHeading = North;
+            state = 2;
+            printf("Current node: x = %d, y = %d\n", full_maze.currentNode->x, full_maze.currentNode->y);
+            printf("Next node: x = %d, y = %d\n", full_maze.nextNode->x, full_maze.nextNode->y);
+
         }
+    }
+    // Move
+    else {
+        // Ensure that the direction of the next node is valid
+        int xDif = full_maze.currentNode->x - full_maze.nextNode->x;    // -1 == East, 1 == West
+        int yDif = full_maze.currentNode->y - full_maze.nextNode->y;    // -1 == South, 1 == North
+        if ((xDif == 0) == (yDif == 0)) {
+            state = 0;
+            printf("Invalid next node\n");
+        }
+        else {
+            // Find the correct target heading
+            // printf("Finding target heading\n");
+            if (xDif == -1) {
+                targetHeading = East;
+            }
+            else if (xDif == 1) {
+                targetHeading = West;
+            }
+            else if (yDif == -1) {
+                targetHeading = South;
+            }
+            else {
+                targetHeading = North;
+            }
 
 
-        // Turn until the target heading matches the current heading
-        while (targetHeading != full_maze.heading) {
+            // Turn until the target heading matches the current heading
+            
             if ((targetHeading-full_maze.heading + 4) % 4 == 1) {
                 TurnRight();
             }
             else if ((targetHeading-full_maze.heading + 4) % 4 == 3) {
                 TurnLeft();
             }
-            else {
+            else if ((targetHeading-full_maze.heading + 4) % 4 == 2) {
                 GoBack();
-                xSemaphoreGive(maze_mutex);
-                xSemaphoreGive(scan_semaphore);
-                return;
+                StopBack();
+                state = 0;
+            }
+            else {
+                GoStraight();
+                Stop();
+                state = 0;
             }
             vTaskDelay(100);
+            // xSemaphoreGive(maze_mutex);
+            // vTaskDelay(100);
         }
-
-        GoStraight();
-        Stop();
-
-        xSemaphoreGive(maze_mutex);
-        xSemaphoreGive(scan_semaphore);
-        // vTaskDelay(100);
     }
 }
 
@@ -96,7 +137,7 @@ void TurnRight() {
     const float TARGET_DIST = 30;
     // const float GAIN = 0.01;
     const float BASE_POWER = 70;
-    const float LOW_POWER = 40;
+    const float LOW_POWER = 10;
 
     float LEFT_START;
 
@@ -119,20 +160,28 @@ void TurnRight() {
     printf("Turning right\n");
     
 
-    // while ((left_encoder - LEFT_START < TARGET_DIST) || left_ultra < ULTRA_STOP) {
-    while (1) {
+    int start = esp_timer_get_time();
+    int minTime = 0.4*1000000;  // uSecs
+    int maxTime = 3*1000000;  // uSecs
+    int currentTime = start;
+    bool finished = false;
+
+    // Exit condition
+    while (((currentTime - start) < minTime || !finished) && ((currentTime - start) < maxTime)) {
         // Get the gyro velocity
-        xQueueReceive(heading_queue, &gyroHeading, 0);
+        if (xQueueReceive(heading_queue, &gyroHeading, 0) == pdTRUE) {
+            printf("Gyro Heading: %f\n", gyroHeading);
+        }
         if (gyroHeading <= targetHeading) {
-            break;
+            finished = true;
         }
 
         // Get the ultrasonic reading
         xQueueReceive(UsQueue1, &left_ultra, 0);
         if(xQueueReceive(UsQueue2, &right_ultra, 0) == pdTRUE) {
             // printf("Left distance %f\n", left_ultra);
-            if (right_ultra <= ULTRA_STOP) {
-                break;
+            if ((right_ultra <= ULTRA_STOP) && ((currentTime - start) < minTime)) {
+                finished = true;
             }
         }
 
@@ -144,6 +193,7 @@ void TurnRight() {
         // float gain = 0;
         brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_0, BASE_POWER); // motor 0 (left)
         brushed_motor_backward(MCPWM_UNIT_0, MCPWM_TIMER_1, LOW_POWER); // motor 1 (right)
+        currentTime = esp_timer_get_time();
         vTaskDelay(1);
     }
 
@@ -164,7 +214,7 @@ void TurnLeft() {
     const float TARGET_DIST = 30;
     // const float GAIN = 0.01;
     const float BASE_POWER = 70;
-    const float LOW_POWER = 40;
+    const float LOW_POWER = 10;
 
     float RIGHT_START;
 
@@ -186,19 +236,27 @@ void TurnLeft() {
     xQueueReceive(heading_queue, &gyroHeading, 0);
     targetHeading += gyroHeading;
 
-    //while ((right_encoder - RIGHT_START < TARGET_DIST) || right_ultra < ULTRA_STOP) {
-    while (1) {
+    int start = esp_timer_get_time();
+    int minTime = 0.4*1000000;  // uSecs
+    int maxTime = 3*1000000;  // uSecs
+    int currentTime = start;
+    bool finished = false;
+
+    // Exit condition
+    while (((currentTime - start) < minTime || !finished) && ((currentTime - start) < maxTime)) {
         // Get the gyro heading
-        xQueueReceive(heading_queue, &gyroHeading, 0);
+        if (xQueueReceive(heading_queue, &gyroHeading, 0) == pdTRUE) {
+            printf("Gyro Heading: %f\n", gyroHeading);
+        }
         if (gyroHeading >= targetHeading) {
-            break;
+            finished = true;
         }
         
         xQueueReceive(UsQueue2, &right_ultra, 0);
         if(xQueueReceive(UsQueue1, &left_ultra, 0) == pdTRUE) {
             // printf("Left distance %f\n", left_ultra);
-            if (left_ultra <= ULTRA_STOP) {
-                break;
+            if ((left_ultra <= ULTRA_STOP) && ((currentTime - start) < minTime)) {
+                finished = true;
             }
         }
 
@@ -210,6 +268,7 @@ void TurnLeft() {
         // float gain = 0;
         brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_1, BASE_POWER); // motor 1 (right)
         brushed_motor_backward(MCPWM_UNIT_0, MCPWM_TIMER_0, LOW_POWER); // motor 0 (left)
+        currentTime = esp_timer_get_time();
         vTaskDelay(1);
     }
 
@@ -226,13 +285,16 @@ void TurnLeft() {
 void GoStraight() {
     const float TARGET_DIST = 10*25.4;  // mm
     const float GAIN = 0.5;
-    const float BASE_POWER = 50;
-    const float WALL_TARGET_DIST = 7;       // Ideal distance from the wall
+    const float BASE_POWER = 60;
+    const float WALL_TARGET_DIST = 5;       // Ideal distance from the wall
     const float WALL_VERY_FAR_DIST = 20;    // But not further than this
     const float ULTRA_GAIN = 5;
+    const float WALL_TOO_CLOSE = 7.5;    // Always stop if the front wall is this close
+
+    const float GAP_STOP_DIST = 10;  // When we see or stop seeing a gap next to us, stop after moving this much further
     
     float targetHeading = 0;
-    float frontUltraTarget = 10;
+    float frontUltraTarget = WALL_TOO_CLOSE;
 
     float LEFT_START, RIGHT_START;
     // Encoder readings
@@ -249,9 +311,18 @@ void GoStraight() {
     xQueueReceive(UsQueue3, &front_ultra, portMAX_DELAY);
     // front_ultra += 10;   // Add a little to the front reading just in case it sees something 23 cm away or something
     // frontUltraTarget += ((int) (front_ultra/25.4) - 1)*25.4;   // Adjust the target distance based on how far the closest wall is
-    frontUltraTarget = front_ultra - 25.4;
-    if (frontUltraTarget < 10) {
-        frontUltraTarget = 10;
+    
+    // If we're close to a wall, we can be confident in the exact distance we need
+    if (false /*front_ultra < 25*2 + WALL_TOO_CLOSE*/) {
+        frontUltraTarget = ((int)((front_ultra - WALL_TOO_CLOSE)/25))*25 + WALL_TOO_CLOSE;
+    }
+    // If we aren't close, just get something reasonable
+    else {
+        frontUltraTarget = front_ultra - 25;    // Subtract 22 instead of 25.4 to give it a little time to stop
+    }
+
+    if (frontUltraTarget < WALL_TOO_CLOSE) {
+        frontUltraTarget = WALL_TOO_CLOSE;
     }
     printf("Front target distance: %f\n", frontUltraTarget);
     
@@ -265,9 +336,14 @@ void GoStraight() {
     xQueueReceive(heading_queue, &gyroHeading, 0);
     targetHeading += gyroHeading;
 
+    int start = esp_timer_get_time();
+    int minTime = 0.8*1000000;  // uSecs
+    int currentTime = start;
+    bool finished = false;
+
     // Exit condition
     // Drive until both distances are greater than the target distance
-    while ((left_encoder - LEFT_START < TARGET_DIST) && (right_encoder - RIGHT_START < TARGET_DIST)) {
+    while ((currentTime - start) < minTime || !finished) {
 
         // If we're close to the left-facing wall, turn more
         if(xQueueReceive(UsQueue1, &left_ultra, 0) == pdTRUE) {
@@ -283,6 +359,16 @@ void GoStraight() {
         if(xQueueReceive(UsQueue3, &front_ultra, 0) == pdTRUE) {
             printf("Front distance %f\n", front_ultra);
         }
+        // If we're close enough to the wall, stop
+        if (frontUltraTarget <= 15) {
+            frontUltraTarget = WALL_TOO_CLOSE;
+        }
+        if (front_ultra <= frontUltraTarget) {
+            finished = true;
+        }
+        if (front_ultra <= WALL_TOO_CLOSE) {
+            break;
+        }
 
         // Both sensors see a nearby wall
         if (left_ultra <= WALL_VERY_FAR_DIST && right_ultra <= WALL_VERY_FAR_DIST) {
@@ -292,8 +378,8 @@ void GoStraight() {
             // If shouldn't see a wall but do, then only go a little further
             if (wallOnLeft && wallOnRight) { 
             }
-            else if (frontUltraTarget > front_ultra - 3) {
-                frontUltraTarget = front_ultra - 3;
+            else if (frontUltraTarget < front_ultra - GAP_STOP_DIST) {
+                frontUltraTarget = front_ultra - GAP_STOP_DIST;
             }
 
         }
@@ -305,8 +391,8 @@ void GoStraight() {
             // If we shouldn't see a wall but do, then only go a little further
             if (wallOnLeft && !wallOnRight) { 
             }
-            else if (frontUltraTarget > front_ultra - 3) {
-                frontUltraTarget = front_ultra - 3;
+            else if (frontUltraTarget < front_ultra - GAP_STOP_DIST) {
+                frontUltraTarget = front_ultra - GAP_STOP_DIST;
             }
         }
         // Only the right ultra sees a nearby wall
@@ -317,8 +403,8 @@ void GoStraight() {
             // If we shouldn't see a wall but do, then only go a little further
             if (!wallOnLeft && wallOnRight) { 
             }
-            else if (frontUltraTarget > front_ultra - 3) {
-                frontUltraTarget = front_ultra - 3;
+            else if (frontUltraTarget < front_ultra - GAP_STOP_DIST) {
+                frontUltraTarget = front_ultra - GAP_STOP_DIST;
             }
         }
         // Neither sensor sees a nearby wall
@@ -329,15 +415,11 @@ void GoStraight() {
             // If we should see a wall but don't, then only go a little further
             if (!wallOnLeft && !wallOnRight) { 
             }
-            else if (frontUltraTarget > front_ultra - 3) {
-                // frontUltraTarget = front_ultra - 3;
+            else if (frontUltraTarget < front_ultra - GAP_STOP_DIST) {
+                frontUltraTarget = front_ultra - GAP_STOP_DIST;
             }
         }
 
-        // If we're close enough to the wall, stop
-        if (front_ultra <= frontUltraTarget) {
-            break;
-        }
 
         // Update the encoder readings
         xQueueReceive(distanceQueueLeft, &left_encoder, 0);
@@ -350,6 +432,7 @@ void GoStraight() {
 
         brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_0, BASE_POWER + left_boost + diff*GAIN); // motor 0 (left)
         brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_1, BASE_POWER + right_boost - diff*GAIN); // motor 1 (right)
+        currentTime = esp_timer_get_time();
         vTaskDelay(1);
     }
 
@@ -362,14 +445,17 @@ void GoStraight() {
 
 void GoBack() {
     const float TARGET_DIST = 10*25.4;  // mm
-    const float GAIN = 0;
-    const float BASE_POWER = 50;
-    const float WALL_TARGET_DIST = 7;       // Ideal distance from the wall
+    const float GAIN = 1;
+    const float BASE_POWER = 60;
+    const float WALL_TARGET_DIST = 6;       // Ideal distance from the wall
     const float WALL_VERY_FAR_DIST = 20;    // But not further than this
     const float ULTRA_GAIN = 5;
+    const float WALL_TOO_CLOSE = 25.4;    // Don't stop if the front wall is this close
+
+    const float GAP_STOP_DIST = 10;  // When we see or stop seeing a gap next to us, stop after moving this much further
     
     float targetHeading = 0;
-    float frontUltraTarget = 30;
+    float frontUltraTarget = WALL_TOO_CLOSE;
 
     float LEFT_START, RIGHT_START;
     // Encoder readings
@@ -377,19 +463,21 @@ void GoBack() {
     float front_ultra = 9999, left_ultra = WALL_TARGET_DIST, right_ultra = WALL_TARGET_DIST;
     float left_boost = 0, right_boost = 0;  // Used when the ultrasonic sensors say we're close to a wall
     
+    bool wallOnLeft = !(full_maze.currentNode->connection[(full_maze.heading + 3) % 4]);
+    bool wallOnRight = !(full_maze.currentNode->connection[(full_maze.heading + 1) % 4]);
 
-    printf("Moving backward\n");
+    printf("Moving straight\n");
 
     // Get the distance that the next wall is from us
     xQueueReceive(UsQueue3, &front_ultra, portMAX_DELAY);
-    front_ultra -= 10;   // Add a little to the front reading just in case it sees something 23 cm away or something
-    frontUltraTarget += ((int) (front_ultra/25.4))*25.4;   // Adjust the target distance based on how far the closest wall is
-    if (frontUltraTarget < 30) {
-        frontUltraTarget = 30;
+    // front_ultra += 10;   // Add a little to the front reading just in case it sees something 23 cm away or something
+    // frontUltraTarget += ((int) (front_ultra/25.4) - 1)*25.4;   // Adjust the target distance based on how far the closest wall is
+    frontUltraTarget = front_ultra + 25;
+    if (frontUltraTarget < WALL_TOO_CLOSE) {
+        frontUltraTarget = WALL_TOO_CLOSE;
     }
     printf("Front target distance: %f\n", frontUltraTarget);
-
-
+    
     // Get starting encoder values
     xQueueReceive(distanceQueueLeft, &left_encoder, 0);
     xQueueReceive(distanceQueueRight, &right_encoder, 0);
@@ -400,63 +488,97 @@ void GoBack() {
     xQueueReceive(heading_queue, &gyroHeading, 0);
     targetHeading += gyroHeading;
 
+    int start = esp_timer_get_time();
+    int minTime = 0.8*1000000;  // uSecs
+    int currentTime = start;
+    bool finished = false;
+
     // Exit condition
     // Drive until both distances are greater than the target distance
-    while ((left_encoder - LEFT_START < TARGET_DIST) && (right_encoder - RIGHT_START < TARGET_DIST)) {
+    while ((currentTime - start) < minTime || !finished) {
 
         // If we're close to the left-facing wall, turn more
         if(xQueueReceive(UsQueue1, &left_ultra, 0) == pdTRUE) {
-            // Calculate the new differential term
             // printf("Left distance %f\n", left_ultra);
         }
 
         // If we're close to the forward-facing wall, stop moving forwards
         if(xQueueReceive(UsQueue2, &right_ultra, 0) == pdTRUE) {
-            // Calculate the new differential term
             // printf("Right distance %f\n", right_ultra);
         }
         
+        // If we're close to the forward-facing wall, stop moving forwards
+        if(xQueueReceive(UsQueue3, &front_ultra, 0) == pdTRUE) {
+            printf("Front distance %f\n", front_ultra);
+        }
+        // If we're far enough from the wall, stop
+        if (front_ultra >= frontUltraTarget && front_ultra >= WALL_TOO_CLOSE) {
+            finished = true;
+        }
 
         // Both sensors see a nearby wall
         if (left_ultra <= WALL_VERY_FAR_DIST && right_ultra <= WALL_VERY_FAR_DIST) {
             left_boost = (WALL_TARGET_DIST - left_ultra)*ULTRA_GAIN;
             right_boost = (WALL_TARGET_DIST - right_ultra)*ULTRA_GAIN;
+
+            // If shouldn't see a wall but do, then only go a little further
+            if (wallOnLeft && wallOnRight) { 
+            }
+            else if (frontUltraTarget > front_ultra + GAP_STOP_DIST) {
+                frontUltraTarget = front_ultra + GAP_STOP_DIST;
+            }
+
         }
         // Only the left ultra sees a nearby wall
         else if (left_ultra <= WALL_VERY_FAR_DIST) {
             left_boost = (WALL_TARGET_DIST - left_ultra)*ULTRA_GAIN;
             right_boost = -left_boost;
+
+            // If we shouldn't see a wall but do, then only go a little further
+            if (wallOnLeft && !wallOnRight) { 
+            }
+            else if (frontUltraTarget > front_ultra + GAP_STOP_DIST) {
+                frontUltraTarget = front_ultra + GAP_STOP_DIST;
+            }
         }
         // Only the right ultra sees a nearby wall
         else if (right_ultra <= WALL_VERY_FAR_DIST) {
             right_boost = (WALL_TARGET_DIST - right_ultra)*ULTRA_GAIN;
             left_boost = -right_boost;
+
+            // If we shouldn't see a wall but do, then only go a little further
+            if (!wallOnLeft && wallOnRight) { 
+            }
+            else if (frontUltraTarget > front_ultra + GAP_STOP_DIST) {
+                frontUltraTarget = front_ultra + GAP_STOP_DIST;
+            }
         }
         // Neither sensor sees a nearby wall
         else {
             left_boost = 0;
             right_boost = 0;
+
+            // If we should see a wall but don't, then only go a little further
+            if (!wallOnLeft && !wallOnRight) { 
+            }
+            else if (frontUltraTarget > front_ultra + GAP_STOP_DIST) {
+                frontUltraTarget = front_ultra + GAP_STOP_DIST;
+            }
         }
 
-        // If we're close to the forward-facing wall, stop moving forwards
-        if(xQueueReceive(UsQueue3, &front_ultra, 0) == pdTRUE) {
-            // printf("Front distance %f\n", front_ultra);
-        }
-        if (front_ultra >= frontUltraTarget) {
-            break;
-        }
 
         // Update the encoder readings
         xQueueReceive(distanceQueueLeft, &left_encoder, 0);
         xQueueReceive(distanceQueueRight, &right_encoder, 0);
 
-
+        // Get the gyro heading
         xQueueReceive(heading_queue, &gyroHeading, 0);
         float diff = gyroHeading - targetHeading;   // Positive if too far left, negative if too far right
         // printf("Diff: %f\n", diff);
 
-        brushed_motor_backward(MCPWM_UNIT_0, MCPWM_TIMER_0, BASE_POWER + left_boost + diff*GAIN); // motor 0 (left)
-        brushed_motor_backward(MCPWM_UNIT_0, MCPWM_TIMER_1, BASE_POWER + right_boost - diff*GAIN); // motor 1 (right)
+        brushed_motor_backward(MCPWM_UNIT_0, MCPWM_TIMER_0, BASE_POWER + left_boost - diff*GAIN); // motor 0 (left)
+        brushed_motor_backward(MCPWM_UNIT_0, MCPWM_TIMER_1, BASE_POWER + right_boost + diff*GAIN); // motor 1 (right)
+        currentTime = esp_timer_get_time();
         vTaskDelay(1);
     }
 
@@ -488,17 +610,7 @@ void MoveTask(void * pvParameters) {
     initialize_motor_control();
 
     while (1) {
-        if (xSemaphoreTake(maze_mutex, (TickType_t) portMAX_DELAY)) {
-            if (full_maze.nextNode != NULL) {
-                Move();
-            }
-            else {
-                // xSemaphoreGive(scan_semaphore);
-                xSemaphoreGive(maze_mutex);
-                xSemaphoreGive(pathfind_semaphore);
-            }
-
-        }
+        Move();
     }
 }
 

@@ -133,7 +133,7 @@ void update_connection(struct Node maze[10][10], struct Node *node, int heading,
 // Finds the distance of each node from the start and center of the maze
 void Pathfind(struct Node maze[10][10]) {
 
-    // printf("Pathfinding\n");
+    printf("Pathfinding\n");
     
     int start = esp_timer_get_time();
 
@@ -232,103 +232,184 @@ void Pathfind(struct Node maze[10][10]) {
 
 // Set the next destination
 struct Node* NextNode(struct Node maze[10][10], struct Node *currentNode, bool goingToCenter) {
-    // printf("Next node\n");
+    printf("Next node\n");
     
-    if (full_maze.goingToCenter) { 
+    // if (full_maze.goingToCenter) { 
 
-        struct Node *closestNode = currentNode;
-        int x = currentNode->x;
-        int y = currentNode->y;
+    //     int x = currentNode->x;
+    //     int y = currentNode->y;
 
-        // Check West
-        if (!currentNode->connection[West]) {
-            // Pass
-        }
-        else if (closestNode->dist_to_center > maze[x-1][y].dist_to_center) {
-            if (maze[x-1][y].dist_to_center >= 0)
-                closestNode = &maze[x-1][y];
-        }
+    //     // Check West
+    //     if (!currentNode->connection[West]) {
+    //         // Pass
+    //     }
+    //     else if (closestNode->dist_to_center > maze[x-1][y].dist_to_center) {
+    //         if (maze[x-1][y].dist_to_center >= 0)
+    //             closestNode = &maze[x-1][y];
+    //     }
 
-        // Check East
-        if (!currentNode->connection[East]) {
-            // Pass
-        }
-        else if (closestNode->dist_to_center > maze[x+1][y].dist_to_center) {
-            if (maze[x+1][y].dist_to_center >= 0)
-                closestNode = &maze[x+1][y];
-        }
+    //     // Check East
+    //     if (!currentNode->connection[East]) {
+    //         // Pass
+    //     }
+    //     else if (closestNode->dist_to_center > maze[x+1][y].dist_to_center) {
+    //         if (maze[x+1][y].dist_to_center >= 0)
+    //             closestNode = &maze[x+1][y];
+    //     }
 
-        // Check North
-        if (!currentNode->connection[North]) {
-            // Pass
-        }
-        else if (closestNode->dist_to_center > maze[x][y-1].dist_to_center) {
-            if (maze[x][y-1].dist_to_center >= 0)
-                closestNode = &maze[x][y-1];
-        }
+    //     // Check North
+    //     if (!currentNode->connection[North]) {
+    //         // Pass
+    //     }
+    //     else if (closestNode->dist_to_center > maze[x][y-1].dist_to_center) {
+    //         if (maze[x][y-1].dist_to_center >= 0)
+    //             closestNode = &maze[x][y-1];
+    //     }
 
-        // Check South
-        if (!currentNode->connection[South]) {
-            // Pass
-        }
-        else if (closestNode->dist_to_center > maze[x][y+1].dist_to_center) {
-            if (maze[x][y+1].dist_to_center >= 0)
-                closestNode = &maze[x][y+1];
-        }
+    //     // Check South
+    //     if (!currentNode->connection[South]) {
+    //         // Pass
+    //     }
+    //     else if (closestNode->dist_to_center > maze[x][y+1].dist_to_center) {
+    //         if (maze[x][y+1].dist_to_center >= 0)
+    //             closestNode = &maze[x][y+1];
+    //     }
+        
+    //     // Set the next node to the closest node
+    //     return closestNode;
+    // }
+
+
+    // // If we're going to the start of the maze
+    // else { 
+    //     // int dist = currentNode->dist_to_center;
+    //     struct Node *closestNode = currentNode;
+    //     int x = currentNode->x;
+    //     int y = currentNode->y;
+
+    //     // Check West
+    //     if (!currentNode->connection[West]) {
+    //         // Pass
+    //     }
+    //     else if (closestNode->dist_to_start > maze[x-1][y].dist_to_start) {
+    //         if (maze[x-1][y].dist_to_start >= 0)
+    //             closestNode = &maze[x-1][y];
+    //     }
+
+    //     // Check East
+    //     if (!currentNode->connection[East]) {
+    //         // Pass
+    //     }
+    //     else if (closestNode->dist_to_start > maze[x+1][y].dist_to_start) {
+    //         if (maze[x+1][y].dist_to_start >= 0)
+    //             closestNode = &maze[x+1][y];
+    //     }
+
+    //     // Check North
+    //     if (!currentNode->connection[North]) {
+    //         // Pass
+    //     }
+    //     else if (closestNode->dist_to_start > maze[x][y-1].dist_to_start) {
+    //         if (maze[x][y-1].dist_to_start >= 0)
+    //             closestNode = &maze[x][y-1];
+    //     }
+
+    //     // Check South
+    //     if (!currentNode->connection[South]) {
+    //         // Pass
+    //     }
+    //     else if (closestNode->dist_to_start > maze[x][y+1].dist_to_start) {
+    //         if (maze[x][y+1].dist_to_start >= 0)
+    //             closestNode = &maze[x][y+1];
+    //     }
         
         // Set the next node to the closest node
-        return closestNode;
-    }
+    // }
+
+    struct Node *closestNode = currentNode;
+    int lowest = 100;
+    int mod = 0;
 
 
-    // If we're going to the start of the maze
-    else { 
-        // int dist = currentNode->dist_to_center;
-        struct Node *closestNode = currentNode;
-        int x = currentNode->x;
-        int y = currentNode->y;
 
-        // Check West
-        if (!currentNode->connection[West]) {
-            // Pass
-        }
-        else if (closestNode->dist_to_start > maze[x-1][y].dist_to_start) {
-            if (maze[x-1][y].dist_to_start >= 0)
-                closestNode = &maze[x-1][y];
-        }
+    while (mod < 4) {
+        int targetHeading = (full_maze.heading + mod) % 4;
+        int nextDist = 1000;
 
-        // Check East
-        if (!currentNode->connection[East]) {
-            // Pass
-        }
-        else if (closestNode->dist_to_start > maze[x+1][y].dist_to_start) {
-            if (maze[x+1][y].dist_to_start >= 0)
-                closestNode = &maze[x+1][y];
-        }
+        if (currentNode->connection[targetHeading]) {
+            struct Node *node = getNodeAtHeading(currentNode, targetHeading);
 
-        // Check North
-        if (!currentNode->connection[North]) {
-            // Pass
-        }
-        else if (closestNode->dist_to_start > maze[x][y-1].dist_to_start) {
-            if (maze[x][y-1].dist_to_start >= 0)
-                closestNode = &maze[x][y-1];
-        }
+            if (node == NULL) {
 
-        // Check South
-        if (!currentNode->connection[South]) {
-            // Pass
+            }
+            else {
+                if (goingToCenter) {
+                    nextDist = node->dist_to_center;
+                }
+                else {
+                    nextDist = node->dist_to_start;
+                }
+
+
+                if (nextDist < lowest && nextDist >= 0) {
+                    lowest = nextDist;
+                    closestNode = node;
+                    printf("Set closest node to x=%d, y=%d\n", closestNode->x, closestNode->y);
+                }
+
+            }
         }
-        else if (closestNode->dist_to_start > maze[x][y+1].dist_to_start) {
-            if (maze[x][y+1].dist_to_start >= 0)
-                closestNode = &maze[x][y+1];
+        else {
+            printf("No connection at heading: %d\n", targetHeading);
+        }
+            
+        switch (mod) {
+            case 0:
+                mod = 1;
+                break;
+            case 1:
+                mod = 3;
+                break;
+            case 2:
+                mod = 4;
+                break;
+            case 3:
+                mod = 2;
+                break;
+            default:
+            break;
+            
         }
         
-        // Set the next node to the closest node
-        return closestNode;
+
     }
+    return closestNode;
 
 
+}
+
+
+struct Node* getNodeAtHeading(struct Node* node, int heading) {
+    heading = (heading + 4) % 4;
+    switch (heading) {
+        case North: 
+            if (node->y > 0)
+                return &(full_maze.maze[node->x][node->y-1]);
+            break;
+        case East: 
+            if (node->x < 9)
+                return &(full_maze.maze[node->x+1][node->y]);
+            break;
+        case South: 
+            if (node->y < 9)
+                return &(full_maze.maze[node->x][node->y+1]);
+            break;
+        case West: 
+            if (node->x > 0)
+                return &(full_maze.maze[node->x-1][node->y]);
+            break;
+    }
+    return NULL;
 }
 
 
@@ -529,14 +610,14 @@ void ScanTask(void * pvParameters)
 {
   for( ;; )
   {
-    // if (xSemaphoreTake(scan_semaphore, ( TickType_t ) 10) == pdTRUE ) {
+    if (xSemaphoreTake(scan_semaphore, ( TickType_t ) 10) == pdTRUE ) {
         if (xSemaphoreTake(maze_mutex, ( TickType_t ) portMAX_DELAY) == pdTRUE) {
             Scan();
             xSemaphoreGive(maze_mutex);
             xSemaphoreGive(pathfind_semaphore);
         }
-    // }
-    vTaskDelay(100);
+    }
+    // vTaskDelay(100);
   }
 }
 

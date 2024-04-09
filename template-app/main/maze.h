@@ -56,6 +56,8 @@ void PrintDistanceToCenter(struct Node[10][10]);
 void Scan();
 void ScanTask(void *);
 
+struct Node* getNodeAtHeading(struct Node* node, int heading);
+
 // static long get_nanos(void);
 
 #endif

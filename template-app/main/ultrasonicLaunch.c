@@ -65,19 +65,14 @@ void ultrasonic_test(void* pvParameters)
         }
         else 
         {
+            
             // printf("avDis = %0.04f cm\n", avDis*100);
-            avDis = (distance+distance2+distance3)/3.0;
             //if ((avDis - distance)*100 > 2 || (avDis - distance)*100 <-2)
-            if(false)
-            {
-                printf("Average Sink Error\n");
-                //printf("Distance: %0.04f cm\n",distance*100);
-                //printf("Distance2: %0.04f cm\n",distance2*100);
-                //printf("Distance3: %0.04f cm\n",distance3*100);
-                //printf("Ave_Distance: %0.04f cm\n",avDis*100);
+            if (distance > 2.5) {
             }
             else
             {
+                avDis = (distance+distance2+distance3)/3.0;
                 //if ( (distance2 - distance)*100 > 5 || (distance2 - distance)*100 <-5)
                 if(false)
                 {
@@ -92,9 +87,9 @@ void ultrasonic_test(void* pvParameters)
                     
                     //xQueueOverwriteFromISR(UsQueue, &distance, pdTRUE);
                 }
+                distance3 = distance2;
+                distance2 = distance;
             }
-            distance3 = distance2;
-            distance2 = distance;
         }
         //int stop = esp_timer_get_time();
         //int time_spent = (stop - start);
@@ -103,6 +98,6 @@ void ultrasonic_test(void* pvParameters)
         //clock_t end = clock();
         //double time_spent =  (double)((end-begin)/_CLOCKS_PER_SEC_)*1000.0;
         //printf("Response Time: %f us\n",time_spent);
-        vTaskDelay(pdMS_TO_TICKS(20));
+        vTaskDelay(pdMS_TO_TICKS(25));
     }
 }

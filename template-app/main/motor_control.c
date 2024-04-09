@@ -2,10 +2,10 @@
 
 #include "motor_control.h"
 
-#define GPIO_PWM0A_OUT GPIO_NUM_4
-#define GPIO_PWM0B_OUT GPIO_NUM_5
-#define GPIO_PWM1A_OUT GPIO_NUM_6
-#define GPIO_PWM1B_OUT GPIO_NUM_7
+#define GPIO_PWM0A_OUT GPIO_NUM_41
+#define GPIO_PWM0B_OUT GPIO_NUM_40
+#define GPIO_PWM1A_OUT GPIO_NUM_39
+#define GPIO_PWM1B_OUT GPIO_NUM_38
 
 void mcpwm_example_gpio_initialize(void)
 {

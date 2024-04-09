@@ -5,6 +5,7 @@ void TurnRight();
 void GoStraight();
 void GoBack();
 void Stop();
+void StopBack();
 
 void Calibrate();
 

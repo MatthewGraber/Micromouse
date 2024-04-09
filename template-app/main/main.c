@@ -42,8 +42,8 @@ struct Node* nextNode;
 bool moving = false;
 
 
-#define I2C_MASTER_SCL_IO  47        /*!< gpio number for I2C master clock */
-#define I2C_MASTER_SDA_IO  21        /*!< gpio number for I2C master data  */
+#define I2C_MASTER_SCL_IO  4        /*!< gpio number for I2C master clock */
+#define I2C_MASTER_SDA_IO  3        /*!< gpio number for I2C master data  */
 #define I2C_MASTER_NUM     I2C_NUM_0 /*!< I2C port number for master dev */
 #define I2C_MASTER_FREQ_HZ 100000    /*!< I2C master clock frequency */
 
@@ -138,10 +138,17 @@ icm20948_configure(icm20948_acce_fs_t acce_fs, icm20948_gyro_fs_t gyro_fs)
 void icm_read_task(void *args)
 {
 	esp_err_t ret = icm20948_configure(ACCE_FS_2G, GYRO_FS_1000DPS);
-	if (ret != ESP_OK) {
-		ESP_LOGE(TAG, "ICM configuration failure");
-		vTaskDelete(NULL);
+	for (int i = 0; ret != ESP_OK && i < 100; i++) {
+		ESP_LOGE(TAG, "ICM configuration failure. Trying again");
+        vTaskDelay(10);
+        ret = icm20948_configure(ACCE_FS_2G, GYRO_FS_1000DPS);
+		// vTaskDelete(NULL);
 	}
+    
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "ICM configuration failure. We don't know what to do with it");
+        vTaskDelete(NULL);
+    }
 	ESP_LOGI(TAG, "ICM20948 configuration successfull!");
 
 
@@ -177,7 +184,7 @@ void icm_read_task(void *args)
         // heading = acce.acce_z*90;
 
         xQueueOverwrite(heading_queue, &heading);
-        if (false) {
+        if (counter == 5) {
             ESP_LOGI(TAG, "heading: %lf\t\tav_vel: %lf", heading, average_velocity);
             counter = 0;
         }
@@ -340,8 +347,8 @@ void app_main(void) {
     //Sensor 1 (left)
     UsQueue1 = xQueueCreate( 1, sizeof( float));
     struct USParam us1;
-    us1.ECHO_GPIO = 17;
-    us1.TRIGGER_GPIO = 18;
+    us1.ECHO_GPIO = 12;
+    us1.TRIGGER_GPIO = 11;
     us1.Usqueue = UsQueue1;
     float distance1;
     xTaskCreate(ultrasonic_test, "ultrasonic_test", configMINIMAL_STACK_SIZE * 5,(void*) &us1, 5, NULL);
@@ -349,8 +356,8 @@ void app_main(void) {
     //Sensor 2 (right)
     UsQueue2 = xQueueCreate( 1, sizeof( float));
     struct USParam us2;
-    us2.ECHO_GPIO = 12;
-    us2.TRIGGER_GPIO = 11;
+    us2.ECHO_GPIO = 8;
+    us2.TRIGGER_GPIO = 7;
     us2.Usqueue = UsQueue2;
     float distance2;
     xTaskCreate(ultrasonic_test, "ultrasonic_test", configMINIMAL_STACK_SIZE * 5,(void*) &us2, 5, NULL);
@@ -358,8 +365,8 @@ void app_main(void) {
     //Sensor 3 (forward)
     UsQueue3 = xQueueCreate( 1, sizeof( float));
     struct USParam us3;
-    us3.ECHO_GPIO = 3;
-    us3.TRIGGER_GPIO = 8;
+    us3.ECHO_GPIO = 10;
+    us3.TRIGGER_GPIO = 9;
     us3.Usqueue = UsQueue3;
     float distance3;
     xTaskCreate(ultrasonic_test, "ultrasonic_test", configMINIMAL_STACK_SIZE * 5,(void*) &us3, 5, NULL);
@@ -380,7 +387,7 @@ void app_main(void) {
 	esp_err_t ret = i2c_bus_init();
 	ESP_LOGI(TAG, "I2C bus initialization: %s", esp_err_to_name(ret));
 
-    xTaskCreate(icm_read_task, "icm read task", 1024 * 100, NULL, 15, NULL);
+    xTaskCreate(icm_read_task, "icm read task", 1024 * 100, NULL, 10, NULL);
 
 
     // Maze initialization
@@ -414,11 +421,12 @@ void app_main(void) {
     TaskHandle_t test_task = NULL;
     
     xSemaphoreGive(scan_semaphore);
+    xSemaphoreGive(maze_mutex);
 
-    xTaskCreate(PathfindTask, "PATHFIND", STACK_SIZE, &uc_param_pathfind, 1, &pathfind_task );
+    // xTaskCreate(PathfindTask, "PATHFIND", STACK_SIZE, &uc_param_pathfind, 1, &pathfind_task );
     // configASSERT(pathfind_task);
     
-    xTaskCreate(ScanTask, "SCAN", STACK_SIZE, &uc_param_scan, 1, &scan_task );
+    // xTaskCreate(ScanTask, "SCAN", STACK_SIZE, &uc_param_scan, 1, &scan_task );
     // configASSERT(scan_task);
 
     xTaskCreate(MoveTask, "MOVE", STACK_SIZE, &uc_param_move, tskIDLE_PRIORITY, &move_task );
@@ -431,8 +439,5 @@ void app_main(void) {
     // xTaskCreate(encoderTask, "encoder_task", 4096, NULL, 5, NULL);
     // xTaskCreate(exampleRecieve, "example_Recieve", 4096, NULL, tskIDLE_PRIORITY, NULL);
 
-
-    // xTaskCreate(ultrasonic_test, "ultrasonic_test", configMINIMAL_STACK_SIZE * 3, NULL, tskIDLE_PRIORITY, NULL);
-    // configASSERT(ultrasonic_test);
 
 }
