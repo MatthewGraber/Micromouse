@@ -212,111 +212,6 @@ void icm_read_task(void *args)
 	vTaskDelete(NULL);
 }
 
-void maze1() {
-    update_connection(maze, &(maze[4][4]), North, false);
-    update_connection(maze, &(maze[4][4]), West, false);
-
-    update_connection(maze, &(maze[5][4]), North, false);
-    update_connection(maze, &(maze[5][4]), East, false);
-
-    update_connection(maze, &(maze[4][5]), South, false);
-    update_connection(maze, &(maze[4][5]), West, false);
-
-    update_connection(maze, &(maze[5][5]), South, false);
-    update_connection(maze, &(maze[5][5]), East, false);
-}
-
-void maze2() {
-    update_connection(full_maze.maze, &(full_maze.maze[4][4]), North, false);
-    update_connection(full_maze.maze, &(maze[4][4]), West, false);
-
-    update_connection(full_maze.maze, &(full_maze.maze[5][4]), North, false);
-    update_connection(full_maze.maze, &(full_maze.maze[5][4]), East, false);
-
-    update_connection(full_maze.maze, &(full_maze.maze[4][5]), South, false);
-    update_connection(full_maze.maze, &(full_maze.maze[4][5]), West, false);
-
-    update_connection(full_maze.maze, &(full_maze.maze[5][5]), South, false);
-    // update_connection(full_maze.maze, &(full_maze.maze[5][5]), East, false);
-}
-
-
-void maze3() {
-
-    update_connection(full_maze.maze, &(full_maze.maze[0][2]), North, false);
-    update_connection(full_maze.maze, &(full_maze.maze[1][2]), North, false);
-    update_connection(full_maze.maze, &(full_maze.maze[2][2]), North, false);
-    update_connection(full_maze.maze, &(full_maze.maze[3][2]), North, false);
-    update_connection(full_maze.maze, &(full_maze.maze[5][2]), North, false);
-    update_connection(full_maze.maze, &(full_maze.maze[6][2]), North, false);
-    update_connection(full_maze.maze, &(full_maze.maze[7][2]), North, false);
-
-    update_connection(full_maze.maze, &(full_maze.maze[6][4]), North, false);
-    update_connection(full_maze.maze, &(full_maze.maze[7][4]), North, false);
-    update_connection(full_maze.maze, &(full_maze.maze[8][4]), North, false);
-
-
-    update_connection(full_maze.maze, &(full_maze.maze[4][4]), North, false);
-    update_connection(full_maze.maze, &(full_maze.maze[2][3]), West, false);
-    update_connection(full_maze.maze, &(full_maze.maze[2][4]), West, false);
-    update_connection(full_maze.maze, &(full_maze.maze[2][5]), West, false);
-
-    update_connection(full_maze.maze, &(full_maze.maze[5][4]), North, false);
-    update_connection(full_maze.maze, &(full_maze.maze[5][4]), East, false);
-
-    update_connection(full_maze.maze, &(full_maze.maze[4][5]), South, false);
-    update_connection(full_maze.maze, &(full_maze.maze[4][4]), West, false);
-    update_connection(full_maze.maze, &(full_maze.maze[4][3]), West, false);
-    update_connection(full_maze.maze, &(full_maze.maze[4][2]), West, false);
-
-    update_connection(full_maze.maze, &(full_maze.maze[7][5]), North, false);
-    update_connection(full_maze.maze, &(full_maze.maze[7][5]), East, false);
-    update_connection(full_maze.maze, &(full_maze.maze[6][5]), East, false);
-    update_connection(full_maze.maze, &(full_maze.maze[5][5]), East, false);
-}
-
-
-void maze4() {
-
-    update_connection(full_maze.maze, &(full_maze.maze[0][2]), North, false);
-    update_connection(full_maze.maze, &(full_maze.maze[1][1]), North, false);
-    update_connection(full_maze.maze, &(full_maze.maze[2][1]), North, false);
-    update_connection(full_maze.maze, &(full_maze.maze[3][1]), North, false);
-    update_connection(full_maze.maze, &(full_maze.maze[5][1]), North, false);
-    update_connection(full_maze.maze, &(full_maze.maze[6][1]), North, false);
-    update_connection(full_maze.maze, &(full_maze.maze[7][1]), North, false);
-
-    update_connection(full_maze.maze, &(full_maze.maze[6][3]), North, false);
-    update_connection(full_maze.maze, &(full_maze.maze[7][3]), North, false);
-    update_connection(full_maze.maze, &(full_maze.maze[8][3]), North, false);
-
-
-    update_connection(full_maze.maze, &(full_maze.maze[4][4]), North, false);
-
-    update_connection(full_maze.maze, &(full_maze.maze[2][1]), West, false);
-    update_connection(full_maze.maze, &(full_maze.maze[2][2]), West, false);
-    update_connection(full_maze.maze, &(full_maze.maze[2][3]), West, false);
-    update_connection(full_maze.maze, &(full_maze.maze[2][4]), West, false);
-    update_connection(full_maze.maze, &(full_maze.maze[2][5]), West, false);
-    update_connection(full_maze.maze, &(full_maze.maze[2][6]), West, false);
-    update_connection(full_maze.maze, &(full_maze.maze[2][7]), West, false);
-    update_connection(full_maze.maze, &(full_maze.maze[2][8]), West, false);
-
-    update_connection(full_maze.maze, &(full_maze.maze[5][4]), North, false);
-    update_connection(full_maze.maze, &(full_maze.maze[5][4]), East, false);
-
-    update_connection(full_maze.maze, &(full_maze.maze[4][5]), South, false);
-    update_connection(full_maze.maze, &(full_maze.maze[4][4]), West, false);
-    update_connection(full_maze.maze, &(full_maze.maze[4][3]), West, false);
-    update_connection(full_maze.maze, &(full_maze.maze[4][2]), West, false);
-
-    update_connection(full_maze.maze, &(full_maze.maze[7][6]), North, false);
-    update_connection(full_maze.maze, &(full_maze.maze[7][6]), East, false);
-    update_connection(full_maze.maze, &(full_maze.maze[6][6]), East, false);
-    update_connection(full_maze.maze, &(full_maze.maze[5][6]), East, false);
-}
-
-
 void exampleRecieve() {
     float distance1 = 0;
     float distance2 = 0;
@@ -336,6 +231,7 @@ void exampleRecieve() {
 void app_main(void) {
 
     // Delay start
+    Stop();
     vTaskDelay(200);
 
     // Initalize semaphores
