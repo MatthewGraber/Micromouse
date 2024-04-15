@@ -531,6 +531,7 @@ icm20948_enable_dlpf(icm20948_handle_t sensor, bool enable)
 	return ret;
 }
 
+//Most of the code before was pulled from a work-in-progress driver found online. These functions below and the defines they use at the top of the file are written for Micromouse to make use of the magnetometer  
 esp_err_t ak09916_write_to_reg(icm20948_handle_t sensor, uint8_t reg, uint8_t data)
 {
 	uint8_t data_temp;
