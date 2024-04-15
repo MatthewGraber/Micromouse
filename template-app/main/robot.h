@@ -6,6 +6,7 @@ void GoStraight();
 void GoBack();
 void Stop();
 void StopBack();
+void SquareUp(float time);
 
 void Calibrate();
 
