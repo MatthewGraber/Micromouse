@@ -91,7 +91,7 @@ void Move() {
                 // If we just backed up and there's a wall behind us, then square up
                 if (!full_maze.currentNode->connection[(full_maze.heading + 2) % 4]) {
                     vTaskDelay(DELAY);
-                    SquareUp(1);
+                    GoBackwardsForTime(1);
                     justSquaredUp = true;
                 }
                 else {
@@ -103,7 +103,7 @@ void Move() {
                 // If we just backed up and there's a wall behind us, then square up
                 if (!full_maze.currentNode->connection[(full_maze.heading + 2) % 4]) {
                     vTaskDelay(DELAY);
-                    SquareUp(1);
+                    GoBackwardsForTime(1);
                     justSquaredUp = true;
                 }
                 else {
@@ -131,16 +131,17 @@ void Move() {
 
 
 void TurnRight() {
-    const float GAIN = 0.6;
-    const float TIME_GAIN = 8/1000000.0;     // Time is measured in us
+    const float GAIN = 0.5;
+    const float TIME_GAIN = 7/1000000.0;     // Time is measured in us
     const float BASE_POWER = 25;
     const float LOW_POWER = 40;
+    const float DEFAULT_TARGET = -85;
 
-    float left_ultra = 0, right_ultra = 100;
     const float ULTRA_STOP = 5;     // Distance at which we will stop turning via ultrasonic sensor
+    float left_ultra = 0, right_ultra = 100;
 
     // Gyro sensor
-    float targetHeading = -85;
+    static float targetHeading = DEFAULT_TARGET;
 
     Stop();
 
@@ -190,13 +191,19 @@ void TurnRight() {
         vTaskDelay(1);
     }
 
-    if ((targetHeading - gyroHeading) > -30) {
+    if ((targetHeading - gyroHeading) > -10) {
         full_maze.heading = (full_maze.heading + 1) % 4;
+        targetHeading = DEFAULT_TARGET;
+    }
+    else if ((targetHeading - gyroHeading) > -45) {
+        Stop();
+        vTaskDelay(DELAY);
+        GoForwardsForTime(0.2);
     }
     else {
         Stop();
         vTaskDelay(DELAY);
-        SquareUp(0.4);
+        GoBackwardsForTime(0.2);
     }
     // brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_1, BASE_POWER);
     // brushed_motor_backward(MCPWM_UNIT_0, MCPWM_TIMER_0, LOW_POWER); // motor 0 (left)
@@ -208,15 +215,16 @@ void TurnRight() {
 
 
 void TurnLeft() {
-    const float GAIN = 0.6;
-    const float TIME_GAIN = 8/1000000.0;      // Time is measured in us
+    const float GAIN = 0.5;
+    const float TIME_GAIN = 7/1000000.0;      // Time is measured in us
     const float BASE_POWER = 25;
     const float LOW_POWER = 40;
+    const float DEFAULT_TARGET = 85;
 
     float left_ultra = 100, right_ultra = 0;
     const float ULTRA_STOP = 5;     // Distance at which we will stop turning via ultrasonic sensor
 
-    float targetHeading = 85;
+    static float targetHeading = DEFAULT_TARGET;
 
     Stop();
 
@@ -266,13 +274,19 @@ void TurnLeft() {
     }
 
     // Make sure we turned a decent amount before claiming we actually turned
-    if ((targetHeading - gyroHeading) < 30) {
+    if ((targetHeading - gyroHeading) < 10) {
         full_maze.heading = (full_maze.heading + 3) % 4;
+        targetHeading = DEFAULT_TARGET;
+    }
+    else if ((targetHeading - gyroHeading) < 45) {
+        Stop();
+        vTaskDelay(DELAY);
+        GoForwardsForTime(0.2);
     }
     else {
         Stop();
         vTaskDelay(DELAY);
-        SquareUp(0.4);
+        GoBackwardsForTime(0.2);
     }
     // brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_1, BASE_POWER);
     // brushed_motor_backward(MCPWM_UNIT_0, MCPWM_TIMER_0, LOW_POWER); // motor 0 (left)
@@ -289,7 +303,7 @@ void GoStraight() {
     const float WALL_TARGET_DIST = 6.5;       // Ideal distance from the wall
     const float WALL_VERY_FAR_DIST = 20;    // But not further than this
     const float GYRO_GAIN = 0.5;
-    const float SIDE_ULTRA_GAIN = 5;
+    const float SIDE_ULTRA_GAIN = 6;
     const float FRONT_ULTRA_GAIN = 0.9;
     const float TIME_GAIN = 5/1000000.0;      // Time is measured in us
     const float DIST_BOOST_MAX = 20;
@@ -484,7 +498,7 @@ void GoStraight() {
         // Check the current time
         currentTime = esp_timer_get_time();
         if ((currentTime - start) > maxTime) {
-            SquareUp(0.4f);
+            GoBackwardsForTime(0.4f);
             return;
         }
         float timeBoost = (currentTime - start) * TIME_GAIN;
@@ -505,7 +519,7 @@ void GoStraight() {
 void GoBack() {
     const float TARGET_DIST = 10*25.4;  // mm
     const float GAIN = 1.2;
-    const float BASE_POWER = 25;
+    const float BASE_POWER = 30;
     const float WALL_TARGET_DIST = 6;       // Ideal distance from the wall
     const float WALL_VERY_FAR_DIST = 20;    // But not further than this
     const float TIME_GAIN = 5/1000000.0;      // Time is measured in us
@@ -528,7 +542,7 @@ void GoBack() {
     bool wallOnLeft = !(full_maze.currentNode->connection[(full_maze.heading + 3) % 4]);
     bool wallOnRight = !(full_maze.currentNode->connection[(full_maze.heading + 1) % 4]);
     
-    float crashBoost = !(full_maze.nextNode->connection[(full_maze.heading + 2) % 4])*20;
+    float crashBoost = !(full_maze.nextNode->connection[(full_maze.heading + 2) % 4])*25;
 
     // Give more power if we're going to try to slam into a wall
     // int slamBoost = !full_maze.nextNode->connection[(full_maze.heading + 2) % 4]*10;
@@ -696,7 +710,7 @@ void GoBack() {
 
 
 // Go backwards for a bit
-void SquareUp(float time) {
+void GoBackwardsForTime(float time) {
     const float speed = 80;
 
     int start = esp_timer_get_time();
@@ -713,6 +727,26 @@ void SquareUp(float time) {
     }
 
     StopBack();
+}
+
+
+void GoForwardsForTime(float time) {
+    const float speed = 80;
+
+    int start = esp_timer_get_time();
+    int maxTime = time*1000000;  // uSecs
+    int currentTime = start;
+    bool finished = false;
+
+    // Runs for specified amount of time
+    while ((currentTime - start) < maxTime) {
+        currentTime = esp_timer_get_time();
+        brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_0, speed); // motor 0 (left)
+        brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_1, speed); // motor 1 (right)
+        vTaskDelay(1);
+    }
+
+    Stop();
 }
 
 // Stops the motors

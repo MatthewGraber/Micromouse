@@ -36,7 +36,8 @@ void GoStraight();
 void GoBack();
 void Stop();
 void StopBack();
-void SquareUp(float time);
+void GoForwardsForTime(float time);
+void GoBackwardsForTime(float time);
 
 void Calibrate();   // Deprecated
 
