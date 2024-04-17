@@ -55,6 +55,8 @@ icm20948_handle_t icm20948 = NULL;
 bool checkCollision = false;
 
 bool collisionDetected = false;
+QueueHandle_t collision_queue = NULL;
+SemaphoreHandle_t check_collision_semaphore = NULL;
 bool bumpDetected = false;
 
 /**
@@ -152,6 +154,7 @@ void icm_read_task(void *args)
 	ESP_LOGI(TAG, "ICM20948 configuration successfull!");
 
 
+    const float COLLISION_THRESHOLD = 0.5f;
 	float headingVectMagn = 0;
 
 	icm20948_acce_value_t acce;
@@ -191,13 +194,32 @@ void icm_read_task(void *args)
         // counter++;
         // ESP_LOGI(TAG, "ax: %lf ay: %lf", acce.acce_x, acce.acce_y);
         
+        // If we've been given an instruction to check for collisions, start doing so
+        if (xSemaphoreTake(check_collision_semaphore, 0) == pdTRUE) {
+            checkCollision = true;
+            collisionDetected = false;
+        }
+
+        // Do we need to notify that we want to check for collisions?
+        checkCollision = true;
+
         //What it says. Take the x and y components of the accerometer and find the magnitude
 		headingVectMagn = sqrt(acce.acce_x * acce.acce_x + acce.acce_y * acce.acce_y);
-        if(headingVectMagn > 1.0 && checkCollision)
+        if(headingVectMagn >= COLLISION_THRESHOLD && checkCollision)
         {
+            // If we find a collision, raise the flag and stop checking
             ESP_LOGI(TAG, "ax: %lf ay: %lf Magn: %lf", acce.acce_x, acce.acce_y,headingVectMagn);
             collisionDetected = 1;
+            checkCollision = false;
+            if (collision_queue!= NULL) {
+                xQueueSend(collision_queue, &collisionDetected, 0);
+            }
         }
+
+        // // Continue sending the collision detection flag until we're told to check for another collision detection
+        // if (collisionDetected) {
+        //     xSemaphoreGive(&collision_semaphore);
+        // }
         /*
         if(headingVectMagn > 0.25 && checkCollision)
         {
@@ -237,7 +259,9 @@ void app_main(void) {
     // Initalize semaphores
     scan_semaphore = xSemaphoreCreateBinary();
     pathfind_semaphore = xSemaphoreCreateBinary();
+    check_collision_semaphore = xSemaphoreCreateBinary();
     maze_mutex = xSemaphoreCreateMutex();
+    
     
     // Ultrasonic stuff
     //Sensor 1 (left)
@@ -270,6 +294,7 @@ void app_main(void) {
 
     // IMU initialization stuff
     heading_queue = xQueueCreate(1, sizeof(float));
+    collision_queue = xQueueCreate(1, sizeof(bool));
     gpio_config_t io_conf = {};
 	io_conf.intr_type = GPIO_INTR_DISABLE;
 	io_conf.mode = GPIO_MODE_INPUT;

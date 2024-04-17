@@ -11,6 +11,8 @@
 
 
 extern QueueHandle_t heading_queue;
+extern QueueHandle_t collision_queue;		// Goes high when we have collision
+extern SemaphoreHandle_t check_collision_semaphore;	// Goes high when we start checking collision
 
 typedef enum {
 	ACCE_FS_2G = 0,  /*!< Accelerometer full scale range is +/- 2g */

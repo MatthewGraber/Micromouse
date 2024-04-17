@@ -45,19 +45,15 @@ void update_connection(struct Node[10][10], struct Node *node, int heading, bool
 // Finds the distance of each node from the start and center of the maze
 void Pathfind(struct Node[10][10]);
 struct Node* NextNode(struct Node maze[10][10], struct Node *currentNode, bool goingToCenter);
-void PathfindTask(void *);
+void PathfindTask(void *);  // Deprecated
 
 
 void printMaze();
 void PrintDistanceToCenter(struct Node[10][10]);
 
-//void ScannerInit(SemaphoreHandle_t scan_handle);
-
 void Scan();
-void ScanTask(void *);
+void ScanTask(void *);      // Deprecated
 
 struct Node* getNodeAtHeading(struct Node* node, int heading);
-
-// static long get_nanos(void);
 
 #endif

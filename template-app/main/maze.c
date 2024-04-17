@@ -567,39 +567,73 @@ void Scan() {
     xQueueReceive(UsQueue2, &rightDistance, 0);
     xQueueReceive(UsQueue3, &frontDistance, 0);    
 
+    int walls[4] = {0, 0, 0, 0};
+
 
     // Left
-    if (xQueueReceive(UsQueue1, &leftDistance, portMAX_DELAY) == pdPASS) {
+    if (xQueueReceive(UsQueue1, &leftDistance, 100) == pdPASS) {
         printf("Left distance: %f\n", leftDistance);
         if (leftDistance < MAX_DISTANCE) {
-            update_connection(full_maze.maze, full_maze.currentNode, (full_maze.heading + 3) % 4, false);
+            walls[(full_maze.heading + 3) % 4] = -1;
+            // update_connection(full_maze.maze, full_maze.currentNode, (full_maze.heading + 3) % 4, false);
         }
         else {
-            update_connection(full_maze.maze, full_maze.currentNode, (full_maze.heading + 3) % 4, true);
+            walls[(full_maze.heading + 3) % 4] = 1;
+            // update_connection(full_maze.maze, full_maze.currentNode, (full_maze.heading + 3) % 4, true);
         }
     }
 
     // Right
-    if (xQueueReceive(UsQueue2, &rightDistance, portMAX_DELAY) == pdPASS) {
+    if (xQueueReceive(UsQueue2, &rightDistance, 100) == pdPASS) {
         printf("Right distance: %f\n", rightDistance);
         if (rightDistance < MAX_DISTANCE) {
-            update_connection(full_maze.maze, full_maze.currentNode, (full_maze.heading + 1) % 4, false);
+            walls[(full_maze.heading + 1) % 4] = -1;
+            // update_connection(full_maze.maze, full_maze.currentNode, (full_maze.heading + 1) % 4, false);
         }
         else {
-            update_connection(full_maze.maze, full_maze.currentNode, (full_maze.heading + 1) % 4, true);
+            walls[(full_maze.heading + 1) % 4] = 1;
+            // update_connection(full_maze.maze, full_maze.currentNode, (full_maze.heading + 1) % 4, true);
         }
     }
 
     // Front
-    if (xQueueReceive(UsQueue3, &frontDistance, portMAX_DELAY) == pdPASS) {
+    if (xQueueReceive(UsQueue3, &frontDistance, 100) == pdPASS) {
         printf("Front distance: %f\n", frontDistance);
         if (frontDistance < MAX_DISTANCE) {
-            update_connection(full_maze.maze, full_maze.currentNode, full_maze.heading, false);
+            walls[full_maze.heading] = -1;
+            // update_connection(full_maze.maze, full_maze.currentNode, full_maze.heading, false);
         }
         else {
-            update_connection(full_maze.maze, full_maze.currentNode, full_maze.heading, true);
+            walls[full_maze.heading] = 1;
+            // update_connection(full_maze.maze, full_maze.currentNode, full_maze.heading, true);
         }
     }
+
+    // If we don't see a wall north of us and we think we're at the top, we clearly aren't at the top
+    // We can say similarly for the other sides of the maze
+    if ((walls[North] == 1) && (full_maze.currentNode->y == 0)) {
+        full_maze.currentNode = &full_maze.maze[full_maze.currentNode->x][full_maze.currentNode->y+1];
+    }
+    if ((walls[East] == 1) && (full_maze.currentNode->x == 9)) {
+        full_maze.currentNode = &full_maze.maze[full_maze.currentNode->x-1][full_maze.currentNode->y];
+    }
+    if ((walls[South] == 1) && (full_maze.currentNode->y == 9)) {
+        full_maze.currentNode = &full_maze.maze[full_maze.currentNode->x][full_maze.currentNode->y-1];
+    }
+    if ((walls[West] == 1) && (full_maze.currentNode->x == 0)) {
+        full_maze.currentNode = &full_maze.maze[full_maze.currentNode->x+1][full_maze.currentNode->y];
+    }
+
+
+    for (int i = 0; i < 4; i++) {
+        if (walls[i] == 1) {
+            update_connection(full_maze.maze, full_maze.currentNode, i, true);
+        }
+        else if (walls[i] == -1) { 
+            update_connection(full_maze.maze, full_maze.currentNode, i, false);
+        }
+    }
+
 
     printMaze();
 }

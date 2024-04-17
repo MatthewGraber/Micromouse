@@ -68,7 +68,7 @@ void ultrasonic_test(void* pvParameters)
             
             // printf("avDis = %0.04f cm\n", avDis*100);
             //if ((avDis - distance)*100 > 2 || (avDis - distance)*100 <-2)
-            if (distance > 2.5) {
+            if (distance > 3) {
             }
             else
             {
