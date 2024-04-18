@@ -154,7 +154,7 @@ void icm_read_task(void *args)
 	ESP_LOGI(TAG, "ICM20948 configuration successfull!");
 
 
-    const float COLLISION_THRESHOLD = 0.35f;
+    const float COLLISION_THRESHOLD = 0.28f;
 	float headingVectMagn = 0;
 
 	icm20948_acce_value_t acce;

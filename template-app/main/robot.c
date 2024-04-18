@@ -131,10 +131,10 @@ void Move() {
 
 
 void TurnRight() {
-    const float GAIN = 0.5;
-    const float TIME_GAIN = 7/1000000.0;     // Time is measured in us
-    const float BASE_POWER = 25;
-    const float LOW_POWER = 40;
+    const float GAIN = 0.6;
+    const float TIME_GAIN = 6/1000000.0;     // Time is measured in us
+    const float BASE_POWER = 20;
+    const float LOW_POWER = 35;
     const float DEFAULT_TARGET = -85;
 
     const float ULTRA_STOP = 5;     // Distance at which we will stop turning via ultrasonic sensor
@@ -146,14 +146,15 @@ void TurnRight() {
     Stop();
 
     xQueueReceive(heading_queue, &gyroHeading, 0);
-    targetHeading += gyroHeading;
-
+    if (targetHeading == DEFAULT_TARGET) {
+        targetHeading += gyroHeading;
+    }
     printf("Turning right\n");
     
 
     int start = esp_timer_get_time();
     int minTime = 0.4*1000000;  // uSecs
-    int maxTime = 3*1000000;  // uSecs
+    int maxTime = 4*1000000;  // uSecs
     int currentTime = start;
     bool finished = false;
 
@@ -197,11 +198,13 @@ void TurnRight() {
     }
     else if ((targetHeading - gyroHeading) > -45) {
         Stop();
+        TurnLeftForTime(0.2);
         vTaskDelay(DELAY);
         GoForwardsForTime(0.2);
     }
     else {
         Stop();
+        TurnLeftForTime(0.2);
         vTaskDelay(DELAY);
         GoBackwardsForTime(0.2);
     }
@@ -215,10 +218,10 @@ void TurnRight() {
 
 
 void TurnLeft() {
-    const float GAIN = 0.5;
-    const float TIME_GAIN = 7/1000000.0;      // Time is measured in us
-    const float BASE_POWER = 25;
-    const float LOW_POWER = 40;
+    const float GAIN = 0.6;
+    const float TIME_GAIN = 6/1000000.0;      // Time is measured in us
+    const float BASE_POWER = 20;
+    const float LOW_POWER = 35;
     const float DEFAULT_TARGET = 85;
 
     float left_ultra = 100, right_ultra = 0;
@@ -232,11 +235,13 @@ void TurnLeft() {
     
     // Get the current heading
     xQueueReceive(heading_queue, &gyroHeading, 0);
-    targetHeading += gyroHeading;
+    if (targetHeading == DEFAULT_TARGET) {
+        targetHeading += gyroHeading;
+    }
 
     int start = esp_timer_get_time();
     int minTime = 0.4*1000000;  // uSecs
-    int maxTime = 3*1000000;  // uSecs
+    int maxTime = 4*1000000;  // uSecs
     int currentTime = start;
     bool finished = false;
 
@@ -280,11 +285,13 @@ void TurnLeft() {
     }
     else if ((targetHeading - gyroHeading) < 45) {
         Stop();
+        TurnRightForTime(0.2);
         vTaskDelay(DELAY);
         GoForwardsForTime(0.2);
     }
     else {
         Stop();
+        TurnRightForTime(0.2);
         vTaskDelay(DELAY);
         GoBackwardsForTime(0.2);
     }
@@ -511,7 +518,11 @@ void GoStraight() {
     // Stop();
     // vTaskDelay(100);
     justSquaredUp = false;
-    full_maze.currentNode = full_maze.nextNode;
+    
+    // Verify that we actually moved
+    if (startDist - front_ultra > 10) {
+        full_maze.currentNode = full_maze.nextNode;
+    }
     // printMaze();
 }
 
@@ -542,7 +553,7 @@ void GoBack() {
     bool wallOnLeft = !(full_maze.currentNode->connection[(full_maze.heading + 3) % 4]);
     bool wallOnRight = !(full_maze.currentNode->connection[(full_maze.heading + 1) % 4]);
     
-    float crashBoost = !(full_maze.nextNode->connection[(full_maze.heading + 2) % 4])*25;
+    float crashBoost = !(full_maze.nextNode->connection[(full_maze.heading + 2) % 4])*30;
 
     // Give more power if we're going to try to slam into a wall
     // int slamBoost = !full_maze.nextNode->connection[(full_maze.heading + 2) % 4]*10;
@@ -620,7 +631,7 @@ void GoBack() {
             collision = false;
         }
         else if (collision) {
-            full_maze.nextNode->connection[(full_maze.heading + 2) % 4] = false;
+            // full_maze.nextNode->connection[(full_maze.heading + 2) % 4] = false;
             break;
         }
 
@@ -702,9 +713,19 @@ void GoBack() {
         vTaskDelay(1);
     }
 
+    // Check to see if we made it
+    if (frontUltraTarget - front_ultra < 10) {
+        full_maze.currentNode = full_maze.nextNode;
+        if (collision) {
+            full_maze.nextNode->connection[(full_maze.heading + 2) % 4] = false;
+        }
+    }
+    else {
+        full_maze.currentNode->connection[(full_maze.heading + 2) % 4] = false;
+    }
+
     // Stop();
     // vTaskDelay(100);
-    full_maze.currentNode = full_maze.nextNode;
     // printMaze();
 }
 
@@ -743,6 +764,48 @@ void GoForwardsForTime(float time) {
         currentTime = esp_timer_get_time();
         brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_0, speed); // motor 0 (left)
         brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_1, speed); // motor 1 (right)
+        vTaskDelay(1);
+    }
+
+    Stop();
+}
+
+
+// Turns left for a time
+void TurnLeftForTime(float time) {
+    const float speed = 50;
+
+    int start = esp_timer_get_time();
+    int maxTime = time*1000000;  // uSecs
+    int currentTime = start;
+    bool finished = false;
+
+    // Runs for specified amount of time
+    while ((currentTime - start) < maxTime) {
+        currentTime = esp_timer_get_time();
+        brushed_motor_backward(MCPWM_UNIT_0, MCPWM_TIMER_0, speed); // motor 0 (left)
+        brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_1, speed); // motor 1 (right)
+        vTaskDelay(1);
+    }
+
+    Stop();
+}
+
+
+// Turns right for time
+void TurnRightForTime(float time) {
+    const float speed = 50;
+
+    int start = esp_timer_get_time();
+    int maxTime = time*1000000;  // uSecs
+    int currentTime = start;
+    bool finished = false;
+
+    // Runs for specified amount of time
+    while ((currentTime - start) < maxTime) {
+        currentTime = esp_timer_get_time();
+        brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_0, speed); // motor 0 (left)
+        brushed_motor_backward(MCPWM_UNIT_0, MCPWM_TIMER_1, speed); // motor 1 (right)
         vTaskDelay(1);
     }
 

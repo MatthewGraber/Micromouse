@@ -38,6 +38,8 @@ void Stop();
 void StopBack();
 void GoForwardsForTime(float time);
 void GoBackwardsForTime(float time);
+void TurnLeftForTime(float time);
+void TurnRightForTime(float time);
 
 void Calibrate();   // Deprecated
 
