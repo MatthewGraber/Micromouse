@@ -41,6 +41,12 @@ void GoBackwardsForTime(float time);
 void TurnLeftForTime(float time);
 void TurnRightForTime(float time);
 
+// Motor functions
+void LeftMotorForward(float pow);
+void RightMotorForward(float pow);
+void LeftMotorBackward(float pow);
+void RightMotorBackward(float pow);
+
 void Calibrate();   // Deprecated
 
 void MoveTask(void *);

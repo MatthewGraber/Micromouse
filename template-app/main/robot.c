@@ -7,6 +7,9 @@ static float gyroHeading = 0;
 
 static bool justSquaredUp = false;
 
+float SPEED = 1;
+const float SPEED_FACTOR = 0.01f;
+
 
 void Move() { 
 
@@ -30,11 +33,11 @@ void Move() {
         // Switch direction if necessary
         if ((full_maze.currentNode->x == 4 || full_maze.currentNode->x == 5) &&
             (full_maze.currentNode->y == 4 || full_maze.currentNode->y == 5)) {
-
             goingToCenter = false;
         }
         else if (full_maze.currentNode->x == 0 && full_maze.currentNode->y == 0) {
             goingToCenter = true;
+            SPEED += SPEED_FACTOR;
         }
 
         // Find the next location to move to
@@ -132,7 +135,7 @@ void Move() {
 
 void TurnRight() {
     const float GAIN = 0.6;
-    const float TIME_GAIN = 6/1000000.0;     // Time is measured in us
+    const float TIME_GAIN = 7/1000000.0;     // Time is measured in us
     const float BASE_POWER = 20;
     const float LOW_POWER = 35;
     const float DEFAULT_TARGET = -85;
@@ -187,8 +190,8 @@ void TurnRight() {
         currentTime = esp_timer_get_time();
         float timeBoost = (currentTime - start)*TIME_GAIN;
         
-        brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_0, BASE_POWER + boost + timeBoost); // motor 0 (left)
-        brushed_motor_backward(MCPWM_UNIT_0, MCPWM_TIMER_1, LOW_POWER + boost/2 + timeBoost); // motor 1 (right)
+        LeftMotorForward( BASE_POWER + boost + timeBoost); // motor 0 (left)
+        RightMotorBackward( LOW_POWER + boost/2 + timeBoost); // motor 1 (right)
         vTaskDelay(1);
     }
 
@@ -219,7 +222,7 @@ void TurnRight() {
 
 void TurnLeft() {
     const float GAIN = 0.6;
-    const float TIME_GAIN = 6/1000000.0;      // Time is measured in us
+    const float TIME_GAIN = 7/1000000.0;      // Time is measured in us
     const float BASE_POWER = 20;
     const float LOW_POWER = 35;
     const float DEFAULT_TARGET = 85;
@@ -273,8 +276,8 @@ void TurnLeft() {
         currentTime = esp_timer_get_time();
         float timeBoost = (currentTime - start)*TIME_GAIN;
 
-        brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_1, BASE_POWER + boost + timeBoost); // motor 1 (right)
-        brushed_motor_backward(MCPWM_UNIT_0, MCPWM_TIMER_0, LOW_POWER + boost/2 + timeBoost); // motor 0 (left)
+        RightMotorForward( BASE_POWER + boost + timeBoost); // motor 1 (right)
+        LeftMotorBackward( LOW_POWER + boost/2 + timeBoost); // motor 0 (left)
         vTaskDelay(1);
     }
 
@@ -295,8 +298,8 @@ void TurnLeft() {
         vTaskDelay(DELAY);
         GoBackwardsForTime(0.2);
     }
-    // brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_1, BASE_POWER);
-    // brushed_motor_backward(MCPWM_UNIT_0, MCPWM_TIMER_0, LOW_POWER); // motor 0 (left)
+    // RightMotorForward( BASE_POWER);
+    // LeftMotorBackward( LOW_POWER); // motor 0 (left)
     // vTaskDelay(50);
     // printMaze();
     Stop();
@@ -510,8 +513,8 @@ void GoStraight() {
         }
         float timeBoost = (currentTime - start) * TIME_GAIN;
 
-        brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_0, BASE_POWER + left_boost + diff*GYRO_GAIN + distanceBoost + timeBoost); // motor 0 (left)
-        brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_1, BASE_POWER + right_boost - diff*GYRO_GAIN + distanceBoost + timeBoost); // motor 1 (right)
+        LeftMotorForward( BASE_POWER + left_boost + diff*GYRO_GAIN + distanceBoost + timeBoost); // motor 0 (left)
+        RightMotorForward( BASE_POWER + right_boost - diff*GYRO_GAIN + distanceBoost + timeBoost); // motor 1 (right)
         vTaskDelay(1);
     }
 
@@ -537,9 +540,9 @@ void GoBack() {
     const float SIDE_ULTRA_GAIN = 4;
     const float FRONT_ULTRA_GAIN = 0.8;
     const float DIST_BOOST_MAX = 20;
-    const float WALL_TOO_CLOSE = 25.4;    // Don't stop if the front wall is this close
+    const float WALL_TOO_CLOSE = 23;    // Don't stop if the front wall is this close
 
-    const float GAP_STOP_DIST = 4;  // When we see or stop seeing a gap next to us, stop after moving this much further
+    const float GAP_STOP_DIST = 2;  // When we see or stop seeing a gap next to us, stop after moving this much further
     
     float targetHeading = 0;
     float frontUltraTarget = WALL_TOO_CLOSE;
@@ -566,15 +569,15 @@ void GoBack() {
 
     // If we're close to the wall, square up against it
     if (front_ultra < 10) {
-        brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_0, 80); // motor 0 (left)
-        brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_1, 80); // motor 1 (right)
+        LeftMotorForward( 80); // motor 0 (left)
+        RightMotorForward( 80); // motor 1 (right)
         vTaskDelay(100);
         Stop();
         frontUltraTarget = WALL_TOO_CLOSE;
     }
     else {
         frontUltraTarget = front_ultra + 22;
-        if (frontUltraTarget < WALL_TOO_CLOSE) {
+        if (frontUltraTarget < WALL_TOO_CLOSE || front_ultra < 10) {
             frontUltraTarget = WALL_TOO_CLOSE;
         }
     }
@@ -707,8 +710,8 @@ void GoBack() {
 
         float timeBoost = (currentTime - start) * TIME_GAIN;
 
-        brushed_motor_backward(MCPWM_UNIT_0, MCPWM_TIMER_0, BASE_POWER + left_boost - diff*GAIN + distanceBoost + timeBoost + crashBoost); // motor 0 (left)
-        brushed_motor_backward(MCPWM_UNIT_0, MCPWM_TIMER_1, BASE_POWER + right_boost + diff*GAIN + distanceBoost + timeBoost + crashBoost); // motor 1 (right)
+        LeftMotorBackward( BASE_POWER + left_boost - diff*GAIN + distanceBoost + timeBoost + crashBoost); // motor 0 (left)
+        RightMotorBackward( BASE_POWER + right_boost + diff*GAIN + distanceBoost + timeBoost + crashBoost); // motor 1 (right)
         currentTime = esp_timer_get_time();
         vTaskDelay(1);
     }
@@ -742,8 +745,8 @@ void GoBackwardsForTime(float time) {
     // Runs for specified amount of time
     while ((currentTime - start) < maxTime) {
         currentTime = esp_timer_get_time();
-        brushed_motor_backward(MCPWM_UNIT_0, MCPWM_TIMER_0, speed); // motor 0 (left)
-        brushed_motor_backward(MCPWM_UNIT_0, MCPWM_TIMER_1, speed); // motor 1 (right)
+        LeftMotorBackward( speed); // motor 0 (left)
+        RightMotorBackward( speed); // motor 1 (right)
         vTaskDelay(1);
     }
 
@@ -762,8 +765,8 @@ void GoForwardsForTime(float time) {
     // Runs for specified amount of time
     while ((currentTime - start) < maxTime) {
         currentTime = esp_timer_get_time();
-        brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_0, speed); // motor 0 (left)
-        brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_1, speed); // motor 1 (right)
+        LeftMotorForward( speed); // motor 0 (left)
+        RightMotorForward( speed); // motor 1 (right)
         vTaskDelay(1);
     }
 
@@ -783,8 +786,8 @@ void TurnLeftForTime(float time) {
     // Runs for specified amount of time
     while ((currentTime - start) < maxTime) {
         currentTime = esp_timer_get_time();
-        brushed_motor_backward(MCPWM_UNIT_0, MCPWM_TIMER_0, speed); // motor 0 (left)
-        brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_1, speed); // motor 1 (right)
+        LeftMotorBackward( speed); // motor 0 (left)
+        RightMotorForward( speed); // motor 1 (right)
         vTaskDelay(1);
     }
 
@@ -804,8 +807,8 @@ void TurnRightForTime(float time) {
     // Runs for specified amount of time
     while ((currentTime - start) < maxTime) {
         currentTime = esp_timer_get_time();
-        brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_0, speed); // motor 0 (left)
-        brushed_motor_backward(MCPWM_UNIT_0, MCPWM_TIMER_1, speed); // motor 1 (right)
+        LeftMotorForward(speed); // motor 0 (left)
+        RightMotorBackward(speed); // motor 1 (right)
         vTaskDelay(1);
     }
 
@@ -838,6 +841,19 @@ void MoveTask(void * pvParameters) {
     }
 }
 
+// Motor functions
+void LeftMotorForward(float pow) {
+    brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_0, pow*SPEED); // motor 0 (left)
+}
+void RightMotorForward(float pow) {
+    brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_1, pow*SPEED); // motor 1 (right)
+}
+void LeftMotorBackward(float pow) {
+    brushed_motor_backward(MCPWM_UNIT_0, MCPWM_TIMER_0, pow*SPEED); // motor 0 (left)
+}
+void RightMotorBackward(float pow) {
+    brushed_motor_backward(MCPWM_UNIT_0, MCPWM_TIMER_1, pow*SPEED); // motor 1 (right)
+}
 
 void Calibrate() {
 
