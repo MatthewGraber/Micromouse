@@ -17,13 +17,33 @@ void Move() {
     static bool goingToCenter = true;
     static int counter = 0;
     static bool justBackedUp = false;
+    static int discrepancy = 0;
+    static int runs = 0;
 
     // printf("Attempting to move\n");
 
     // Scan
     if (state == 0) {
-        Scan();
-        state = 1;
+        discrepancy += Scan();
+
+        if (discrepancy >= 3) {
+            if (AdjustLocation(goingToCenter)) {
+                full_maze.currentNode->explored = true;
+                state = 1;
+                discrepancy = 0;
+            }
+            else {
+                state = 1;
+                counter++;
+                discrepancy -= 1;
+            }
+        }
+        // If there were no issues, move on
+        else {
+            full_maze.currentNode->explored = true;
+            state = 1;
+        }
+
     }
     // Pathfind
     else if (state == 1) {
@@ -31,15 +51,23 @@ void Move() {
         if ((full_maze.currentNode->x == 4 || full_maze.currentNode->x == 5) &&
             (full_maze.currentNode->y == 4 || full_maze.currentNode->y == 5)) {
 
+            if (goingToCenter) {
+                runs++;
+            }
             goingToCenter = false;
+            backup_maze.currentNode = full_maze.currentNode;
         }
         else if (full_maze.currentNode->x == 0 && full_maze.currentNode->y == 0) {
+            if (!goingToCenter) {
+                runs++;
+            }
             goingToCenter = true;
+            backup_maze.currentNode = full_maze.currentNode;
         }
 
         // Find the next location to move to
         Pathfind(full_maze.maze);
-        full_maze.nextNode = NextNode(full_maze.maze, full_maze.currentNode, goingToCenter);
+        full_maze.nextNode = NextNode(full_maze.maze, full_maze.currentNode, full_maze.heading, goingToCenter);
         if (full_maze.nextNode == full_maze.currentNode) {
             state = 0;
             printf("Couldn't find next node!\n");

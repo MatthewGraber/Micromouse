@@ -27,6 +27,7 @@ SemaphoreHandle_t pathfind_semaphore;
 
 // The maze
 struct Maze full_maze;
+struct Maze backup_maze;
 SemaphoreHandle_t maze_mutex;
 
 // Queues
@@ -35,7 +36,7 @@ QueueHandle_t UsQueue2;
 QueueHandle_t UsQueue3;
 QueueHandle_t heading_queue;
 
-struct Node maze[10][10];
+// struct Node maze[10][10];
 
 struct Node* currentNode;
 struct Node* nextNode;
@@ -313,6 +314,7 @@ void app_main(void) {
 
     // Maze initialization
     initalizeMaze(full_maze.maze);
+    initalizeMaze(backup_maze.maze);
     full_maze.currentNode = &full_maze.maze[0][0];
     full_maze.heading = South;
     full_maze.goingToCenter = true;

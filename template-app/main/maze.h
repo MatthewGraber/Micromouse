@@ -1,3 +1,6 @@
+#ifndef MAZE
+#define MAZE
+
 #include <stdbool.h>
 #include <stdio.h>
 
@@ -5,9 +8,6 @@
 #include <freertos/task.h>
 #include <freertos/semphr.h>
 
-
-#ifndef MAZE
-#define MAZE
 
 #define North 0
 #define East 1
@@ -23,6 +23,8 @@ struct Node {
     // Each connection represents a space without a wall
     bool connection[4];
 
+    bool explored;
+
     int16_t dist_to_center;
     int16_t dist_to_start;
 };
@@ -37,6 +39,9 @@ struct Maze {
     int heading;
 };
 
+extern struct Maze full_maze;
+extern struct Maze backup_maze;
+
 void initalizeMaze(struct Node[10][10]);
 
 // Update the connection of a node
@@ -44,14 +49,24 @@ void update_connection(struct Node[10][10], struct Node *node, int heading, bool
 
 // Finds the distance of each node from the start and center of the maze
 void Pathfind(struct Node[10][10]);
-struct Node* NextNode(struct Node maze[10][10], struct Node *currentNode, bool goingToCenter);
+struct Node* NextNode(struct Node maze[10][10], struct Node *currentNode, int heading, bool goingToCenter);
 void PathfindTask(void *);  // Deprecated
 
+void CopyNode(struct Node *original, struct Node *copy);
+void CopyMaze(struct Maze *original, struct Maze *copy);
+
+// Called when there are discrepancies between our current location and our memory of that location
+// Fixes where we are in space
+// Returns true if successful
+bool AdjustLocation(bool goingToCenter);
 
 void printMaze();
 void PrintDistanceToCenter(struct Node[10][10]);
 
-void Scan();
+
+// Returns the number of walls changed if it was already explored
+// Otherwise returns 0
+int Scan();
 void ScanTask(void *);      // Deprecated
 
 struct Node* getNodeAtHeading(struct Node* node, int heading);
