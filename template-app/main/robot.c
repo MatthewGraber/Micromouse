@@ -10,6 +10,8 @@ static bool justSquaredUp = false;
 float SPEED = 1;
 const float SPEED_FACTOR = 0.01f;
 
+extern QueueHandle_t reset_queue;
+
 
 void Move() { 
 
@@ -22,6 +24,21 @@ void Move() {
     static bool justBackedUp = false;
 
     // printf("Attempting to move\n");
+    bool reset = false;
+    if (xQueueReceive(reset_queue, &reset, 0) == pdTRUE) {
+        if (reset) {
+            printf("Reset\n");
+            // We can't trust our most recent scan since we picked up the robot
+            for (int i = 0; i < 4; i++) {
+                update_connection(full_maze.maze, full_maze.currentNode, i, true);
+            }
+            Stop();
+            vTaskDelay(1000);
+            state = 0;
+            full_maze.currentNode = &full_maze.maze[0][0];
+            full_maze.heading = South;
+        }
+    }
 
     // Scan
     if (state == 0) {
@@ -89,7 +106,9 @@ void Move() {
 
             // Turn until the target heading matches the current heading
             
-            if ((targetHeading-full_maze.heading + 4) % 4 == 1) {
+            if ((targetHeading-full_maze.heading + 4) % 4 == 1 ||
+                ((targetHeading-full_maze.heading + 4) % 4 == 2 &&
+                full_maze.currentNode->connection[(full_maze.heading + 1)])) {
                 TurnRight();
                 // If we just backed up and there's a wall behind us, then square up
                 if (!full_maze.currentNode->connection[(full_maze.heading + 2) % 4]) {
@@ -101,7 +120,9 @@ void Move() {
                     justSquaredUp = false;
                 }
             }
-            else if ((targetHeading-full_maze.heading + 4) % 4 == 3) {
+            else if ((targetHeading-full_maze.heading + 4) % 4 == 3 ||
+                ((targetHeading-full_maze.heading + 4) % 4 == 2 &&
+                full_maze.currentNode->connection[(full_maze.heading + 3)])) {
                 TurnLeft();
                 // If we just backed up and there's a wall behind us, then square up
                 if (!full_maze.currentNode->connection[(full_maze.heading + 2) % 4]) {
@@ -342,7 +363,9 @@ void GoStraight() {
     printf("Moving straight\n");
 
     // Get the distance that the next wall is from us
-    xQueueReceive(UsQueue3, &front_ultra, portMAX_DELAY);
+    if (xQueueReceive(UsQueue3, &front_ultra, 200) != pdTRUE) {
+        front_ultra = 250;
+    }
     // front_ultra += 10;   // Add a little to the front reading just in case it sees something 23 cm away or something
     // frontUltraTarget += ((int) (front_ultra/25.4) - 1)*25.4;   // Adjust the target distance based on how far the closest wall is
     startDist = front_ultra;
@@ -565,7 +588,9 @@ void GoBack() {
     printf("Moving straight\n");
 
     // Get the distance that the next wall is from us
-    xQueueReceive(UsQueue3, &front_ultra, portMAX_DELAY);
+    if (xQueueReceive(UsQueue3, &front_ultra, 200) != pdTRUE) {
+        front_ultra = 250;
+    }
 
     // If we're close to the wall, square up against it
     if (front_ultra < 10) {

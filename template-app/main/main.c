@@ -47,7 +47,8 @@ bool moving = false;
 #define I2C_MASTER_NUM     I2C_NUM_0 /*!< I2C port number for master dev */
 #define I2C_MASTER_FREQ_HZ 100000    /*!< I2C master clock frequency */
 
-#define GPIO_BIT_MASK (1ULL << GPIO_NUM_1 || 1ULL << GPIO_NUM_15 || 1ULL << GPIO_NUM_16 || 1ULL << GPIO_NUM_17 || 1ULL << GPIO_NUM_18 || 1ULL << GPIO_NUM_5 || 1ULL << GPIO_NUM_6 || 1ULL << GPIO_NUM_7 || 1ULL << GPIO_NUM_8 || 1ULL << GPIO_NUM_9 || 1ULL << GPIO_NUM_10 || 1ULL << GPIO_NUM_11 || 1ULL << GPIO_NUM_12 || 1ULL << GPIO_NUM_13 || 1ULL << GPIO_NUM_14 || 1ULL << GPIO_NUM_38 || 1ULL << GPIO_NUM_39 || 1ULL << GPIO_NUM_40 || 1ULL << GPIO_NUM_41 || 1ULL << GPIO_NUM_42 || 1ULL << GPIO_NUM_45 || 1ULL << GPIO_NUM_47 || 1ULL << GPIO_NUM_48)
+#define GPIO_BIT_MASK (1ULL << GPIO_NUM_0 || 1ULL << GPIO_NUM_1 || 1ULL << GPIO_NUM_15 || 1ULL << GPIO_NUM_16 || 1ULL << GPIO_NUM_17 || 1ULL << GPIO_NUM_18 || 1ULL << GPIO_NUM_5 || 1ULL << GPIO_NUM_6 || 1ULL << GPIO_NUM_7 || 1ULL << GPIO_NUM_8 || 1ULL << GPIO_NUM_9 || 1ULL << GPIO_NUM_10 || 1ULL << GPIO_NUM_11 || 1ULL << GPIO_NUM_12 || 1ULL << GPIO_NUM_13 || 1ULL << GPIO_NUM_14 || 1ULL << GPIO_NUM_38 || 1ULL << GPIO_NUM_39 || 1ULL << GPIO_NUM_40 || 1ULL << GPIO_NUM_41 || 1ULL << GPIO_NUM_42 || 1ULL << GPIO_NUM_45 || 1ULL << GPIO_NUM_47 || 1ULL << GPIO_NUM_48)
+// #define GPIO_BIT_MASK GPIO_NUM_0
 
 static const char *TAG = "icm test";
 icm20948_handle_t icm20948 = NULL;
@@ -56,6 +57,7 @@ bool checkCollision = false;
 
 bool collisionDetected = false;
 QueueHandle_t collision_queue = NULL;
+QueueHandle_t reset_queue = NULL;
 SemaphoreHandle_t check_collision_semaphore = NULL;
 bool bumpDetected = false;
 
@@ -193,6 +195,11 @@ void icm_read_task(void *args)
         }
         // counter++;
         // ESP_LOGI(TAG, "ax: %lf ay: %lf", acce.acce_x, acce.acce_y);
+        // ESP_LOGI(TAG, "gx: %lf gy: %lf", gyro.gyro_x, gyro.gyro_y);
+        if (gyro.gyro_x > 200 || gyro.gyro_x < -200) {
+            bool reset = true;
+            xQueueSend(reset_queue, &reset, 0);
+        }
         
         // If we've been given an instruction to check for collisions, start doing so
         if (xSemaphoreTake(check_collision_semaphore, 0) == pdTRUE) {
@@ -295,6 +302,7 @@ void app_main(void) {
     // IMU initialization stuff
     heading_queue = xQueueCreate(1, sizeof(float));
     collision_queue = xQueueCreate(1, sizeof(bool));
+    reset_queue = xQueueCreate(1, sizeof(bool));
     gpio_config_t io_conf = {};
 	io_conf.intr_type = GPIO_INTR_DISABLE;
 	io_conf.mode = GPIO_MODE_INPUT;
@@ -302,6 +310,8 @@ void app_main(void) {
 	io_conf.pull_down_en = 1;
 	io_conf.pull_up_en = 0;
 	gpio_config(&io_conf);
+
+
 
 	//I2C Init
 	ESP_LOGI(TAG, "Starting ICM test");
@@ -325,6 +335,8 @@ void app_main(void) {
     // maze2();
     // maze3();
     // maze4();
+
+
 
     printMaze();
 
